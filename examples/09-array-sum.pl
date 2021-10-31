@@ -4,8 +4,6 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 use OpenMP::Environment ();
-use Getopt::Long qw/GetOptionsFromArray/;
-use Util::H2O qw/h2o/;
 
 =pod
 THIS IS NON-FUNCTIONAL, BUT SHOWS A "MOCK UP"
@@ -19,20 +17,16 @@ use Inline::C (
     with        => qw/Alien::OpenMP/, # build flags + prepend 'omp.h' via "add_include" 
     BUILD_NOISY => 1,
 );
+
 # NOTE: additionally, there will be a default header file
 # added via 'add_include' that defines macros that will
 # be useful for dealing with OpenMP'd function interfaces
-# used inside of running perl process (see below)
-
-# init options
-my $o = { threads => q{1,2,4,8,16}, };
-
-my $ret = GetOptionsFromArray( \@ARGV, $o, qw/threads=s/ );
-h2o $o;
+# used inside of running perl process (see note about
+# 'inline-c-openmp.h' below)
 
 my $oenv = OpenMP::Environment->new;
 my @arr  = ( 1 .. 1_000 );
-for my $num_threads ( split / *, */, $o->threads ) {
+for my $num_threads ( qw/1 2 4 8 16 32/ ) {
     $oenv->omp_num_threads($num_threads);
     my $sum = sum( \@arr );
     print qq{$sum\n};
