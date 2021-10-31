@@ -15,10 +15,14 @@ WHEN USING Inline::C::OpenMP
 
 # build and load subroutines via Inline::C::OpenMP
 use Inline::C (
-    OpenMP      => 'DATA',
-    with        => qw/Alien::OpenMP/,
+    OpenMP      => 'DATA',            # 'C' code + OpenMP pragmas
+    with        => qw/Alien::OpenMP/, # build flags + prepend 'omp.h' via "add_include" 
     BUILD_NOISY => 1,
 );
+# NOTE: additionally, there will be a default header file
+# added via 'add_include' that defines macros that will
+# be useful for dealing with OpenMP'd function interfaces
+# used inside of running perl process (see below)
 
 # init options
 my $o = { threads => q{1,2,4,8,16}, };
@@ -39,6 +43,8 @@ exit;
 __DATA__
 
 __C__
+// implied, '# include "omp.h"
+// implied, '# include "inline-c-openmp.h"
 # include <stdlib.h>
 # include <stdio.h>
 
