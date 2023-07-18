@@ -5,7 +5,7 @@ This module will provide Inline::C related things with conveniences for building
 **Nothing here yet, but will happen!**
 
 Current thought: OpenMP::Simple should basically be the encapsulation of:
-* `Inline::C`+`Alien::OpenMP` (with omp.h auto_include)
+* `Inline::C`+`Alien::OpenMP` (with `omp.h` _auto_include_)
 * an addition "auto_include" that defines some helpful macros and utility functions
 
 Example of things that will be provided to make it easier to blend OpenMP decorated `Inline::C`
