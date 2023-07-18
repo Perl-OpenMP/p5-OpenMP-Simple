@@ -13,7 +13,6 @@ use Inline (
     C                 => 'DATA',
     auto_include      => OpenMP::Simple::helpers(),
     with              => qw/Alien::OpenMP/,
-    clean_after_build => -1,
 );
 
 my $P           = 5;
