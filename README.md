@@ -1,6 +1,6 @@
 # p5-OpenMP::Simple
 
-This module will provide Inline::C related things with conveniences for building out OpenMP power subs and runtime things. It is a goal to provide a very simple stepping stone that leads developers towards more advanced `XS` typedefs and other binding options, and if needed, `PDL`.
+This module will provide `Inline::C` related things with conveniences for building out OpenMP power subs and runtime things. It is a goal to provide a very simple stepping stone that leads developers towards more advanced `XS` typedefs and other binding options, and if needed, `PDL`.
 
 **Nothing here yet, but will happen!**
 
