@@ -7,7 +7,7 @@ use Alien::OpenMP;
 sub Inline {
   my ($self, $lang) = @_;
   my $config = Alien::OpenMP->Inline($lang);
-  $config->{AUTO_INCLUDE} .=<<EOC;
+  $config->{AUTO_INCLUDE} .=q{
 
 // NOTE: it is possible (and likely desirable) for this to become a .h file at some point //
 
@@ -15,12 +15,20 @@ sub Inline {
 #define PerlOMP_ENV_UPDATE_NUM_THREADS char *num = getenv("OMP_NUM_THREADS"); omp_set_num_threads(atoi(num));
 #define PerlOMP_RET_ARRAY_REF_ret AV* ret = newAV();sv_2mortal((SV*)ret);
 
+/* TODO:
+ *   add macros for all envars supported by OpenMP::Environment
+ * ...
+*/
+
 /* Datatype Converters */
 
 /* A R R A Y S */
 
 /* 2D AoA to 2D float C array ...
- * Convert a regular MxN Perl array of arrays (AoA) consisting of floating point values
+ * Convert a regular MxN Perl array of arrays (AoA) consisting of floating point values, e.g.,
+ *
+ *   my $AoA = [ [qw/1.01 2.02 3.03/], [qw/3.145 2.123 0.892/], [qw/19.17 60.651 20.17/] ];
+ *
  * into a C array of the same dimensions so that it can be used as expected with an OpenMP
  * "#pragma omp for" work sharing construct
 */
@@ -36,7 +44,13 @@ void PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(SV *AoA, int numRows, int rowSize, float r
   }
 }
 
-EOC
+/* TODO:
+ *   add converted for 1D, 3D floats; 1, 2, & 3D ints
+  *  experiment with simple hash ref to C struct
+ * ...
+*/
+
+};
   return $config;
 }
 
