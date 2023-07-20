@@ -2,12 +2,29 @@ package OpenMP::Simple;
 
 use strict;
 use warnings;
+use Alien::OpenMP;
 
-sub helpers {
-return<<EOC;
+sub Inline {
+  my ($self, $lang) = @_;
+  my $config = Alien::OpenMP->Inline($lang);
+  $config->{AUTO_INCLUDE} .=<<EOC;
+
+// NOTE: it is possible (and likely desirable) for this to become a .h file at some point //
+
+/* Macros */
 #define PerlOMP_ENV_UPDATE_NUM_THREADS char *num = getenv("OMP_NUM_THREADS"); omp_set_num_threads(atoi(num));
 #define PerlOMP_RET_ARRAY_REF_ret AV* ret = newAV();sv_2mortal((SV*)ret);
 
+/* Datatype Converters */
+
+/* A R R A Y S */
+
+/* 2D AoA to 2D float C array ...
+ * Convert a regular MxN Perl array of arrays (AoA) consisting of floating point values
+ * into a C array of the same dimensions so that it can be used as expected with an OpenMP
+ * "#pragma omp for" work sharing construct
+*/
+ 
 void PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(SV *AoA, int numRows, int rowSize, float retArray[numRows][rowSize]) {
   SV **AVref;
   for (int i=0; i<numRows; i++) {
@@ -18,7 +35,9 @@ void PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(SV *AoA, int numRows, int rowSize, float r
     }
   }
 }
+
 EOC
+  return $config;
 }
 
 1;
@@ -29,20 +48,20 @@ __END__
 
 =head1 SYNOPSIS
 
-    use Alien::OpenMP;
     use OpenMP::Simple;
     use OpenMP::Environment;
     
     use Inline (
         C                 => 'DATA',
-        auto_include      => OpenMP::Simple::helpers(),
-        with              => qw/Alien::OpenMP/,
+        with              => qw/OpenMP::Simple/,
     );
     
 =head1 DESCRIPTION
 
 This module attempts to ease the transition for those more familiar with programming C with OpenMP
-than they are with Perl or using C<Inline::C> within their Perl programs.
+than they are with Perl or using C<Inline::C> within their Perl programs. It build upon the configuration
+information that is provided for by C<Alien::OpenMP>, and appends to the C<AUTO_INCLUDE> literal
+lines of C code that defines useful macros and data conversion functions (Perl to C, C to Perl).
 
 In addition to helping to deal with getting data structures that are very common in the computational
 domains into and out of these C<Inline::C>'d routines that leverage I<OpenMP>, this module provides

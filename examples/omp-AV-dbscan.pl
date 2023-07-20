@@ -5,14 +5,12 @@ use strict;
 use Util::H2O::More qw/ddd Getopt2h2o/;
 
 # build and load subroutines
-use Alien::OpenMP;
-use OpenMP::Environment;
 use OpenMP::Simple;
+use OpenMP::Environment;
 
 use Inline (
     C                 => 'DATA',
-    auto_include      => OpenMP::Simple::helpers(),
-    with              => qw/Alien::OpenMP/,
+    with              => qw/OpenMP::Simple/,
 );
 
 my $P           = 5;
