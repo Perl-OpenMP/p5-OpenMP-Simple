@@ -11,18 +11,29 @@ sub Inline {
 
 // NOTE: it is possible (and likely desirable) for this to become a .h file at some point //
 
-/* Macros */
-#define PerlOMP_ENV_UPDATE_NUM_THREADS char *num = getenv("OMP_NUM_THREADS"); omp_set_num_threads(atoi(num));
+/* %ENV Update Macros (doxygen style comments) */
+#define PerlOMP_ENV_UPDATE_NUM_THREADS char *num = getenv("OMP_NUM_THREADS"); omp_set_num_threads(atoi(num)); ///< read and update $ENV{OMP_NUM_THREADS}
+#define PerlOMP_ENV_UPDATE_SCHEDULE char *str = getenv("OMP_SCHEDULE"); omp_set_schedule(str);                ///< read and update $ENV{OMP_SCHEDULE}
+
+// ... add all of them from OpenMP::Environment, add unit tests
+
+/* Output Init Macros (needed?) */
 #define PerlOMP_RET_ARRAY_REF_ret AV* ret = newAV();sv_2mortal((SV*)ret);
 
-/* TODO:
- *   add macros for all envars supported by OpenMP::Environment
- * ...
-*/
+/* Datatype Converters (doxygen style comments) */
 
-/* Datatype Converters */
+/**
+ * Converts a 1D Perl Array Reference (AV*) into a 1D C array of floats; allocates retArray[numElements] by reference
+ * @param[in] *Aref, int numElements, float retArray[numElements] 
+ * @param[out] void 
+ */ 
 
-/* A R R A Y S */
+void PerlOMP_1D_Array_TO_FLOAT_ARRAY_1D(SV *Aref, int numElements, float retArray[numElements]) {
+  for (int i=0; i<numElements; i++) {
+    SV **element = av_fetch((AV*)SvRV(Aref), i, 0);
+    retArray[i] = SvNV(*element);
+  }
+}
 
 /* 2D AoA to 2D float C array ...
  * Convert a regular MxN Perl array of arrays (AoA) consisting of floating point values, e.g.,
@@ -44,9 +55,46 @@ void PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(SV *AoA, int numRows, int rowSize, float r
   }
 }
 
+/* 1D Array reference to 1D int C array ...
+ * Convert a regular M-element Perl array consisting of inting point values, e.g.,
+ *
+ *   my $Aref = [ 10, 314, 527, 911, 538 ];
+ *
+ * into a C array of the same dimensions so that it can be used as exepcted with an OpenMP
+ * "#pragma omp for" work sharing construct
+*/
+
+void PerlOMP_1D_Array_TO_INT_ARRAY_1D(SV *Aref, int numElements, int retArray[numElements]) {
+  for (int i=0; i<numElements; i++) {
+    SV **element = av_fetch((AV*)SvRV(Aref), i, 0);
+    retArray[i] = SvIV(*element);
+  }
+}
+
+/* 2D AoA to 2D int C array ...
+ * Convert a regular MxN Perl array of arrays (AoA) consisting of inting point values, e.g.,
+ *
+ *   my $AoA = [ [qw/101 202 303/], [qw/3145 2123 892/], [qw/1917 60.651 2017/] ];
+ *
+ * into a C array of the same dimensions so that it can be used as expected with an OpenMP
+ * "#pragma omp for" work sharing construct
+*/
+ 
+void PerlOMP_2D_AoA_TO_INT_ARRAY_2D(SV *AoA, int numRows, int rowSize, int retArray[numRows][rowSize]) {
+  SV **AVref;
+  for (int i=0; i<numRows; i++) {
+    AVref = av_fetch((AV*)SvRV(AoA), i, 0);
+    for (int j=0; j<rowSize;j++) {
+      SV **element = av_fetch((AV*)SvRV(*AVref), j, 0);
+      retArray[i][j] = SvIV(*element);
+    }
+  }
+}
+
 /* TODO:
- *   add converted for 1D, 3D floats; 1, 2, & 3D ints
-  *  experiment with simple hash ref to C struct
+  * add unit tests for conversion functions
+  * add some basic matrix operations (transpose for 2D, reverse for 1D)
+  * experiment with simple hash ref to C struct
  * ...
 */
 
