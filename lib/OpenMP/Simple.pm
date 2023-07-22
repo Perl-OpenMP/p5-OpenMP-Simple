@@ -13,11 +13,11 @@ sub Inline {
 
 /* %ENV Update Macros (doxygen style comments) */
 
-#define PerlOMP_ENV_SET_NUM_THREADS        \
+#define PerlOMP_ENV_SET_NUM_THREADS           \
     char *num = getenv("OMP_NUM_THREADS");    \
     omp_set_num_threads(atoi(num));           ///< read and update $ENV{OMP_NUM_THREADS}
 
-#define PerlOMP_ENV_SET_SCHEDULE           \
+#define PerlOMP_ENV_SET_SCHEDULE              \
     char *str = getenv("OMP_SCHEDULE");       \
     omp_sched_t SCHEDULE = omp_sched_static;  \
     int CHUNK = 1; char *pt;                  \
