@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
+our $VERSION = q{0.0.1};
+
 sub Inline {
   my ($self, $lang) = @_;
   my $config = Alien::OpenMP->Inline($lang);
@@ -106,7 +108,9 @@ void PerlOMP_2D_AoA_TO_INT_ARRAY_2D(SV *AoA, int numRows, int rowSize, int retAr
 
 __END__
 
-=head1 NAME OpenMP::Simple
+=head1 NAME
+
+OpenMP::Simple - Provides some DWIM helpers for using OpenMP via C<Inline::C>.
 
 =head1 SYNOPSIS
 
@@ -162,6 +166,10 @@ represent a 2D matrix.
 
 =back
 
-=head1 COPYRIGHT
+=head1 AUTHOR
+
+Oodler 577 L<< <oodler@cpane.org> >>
+
+=head1 LICENSE & COPYRIGHT
 
 Same as Perl.
