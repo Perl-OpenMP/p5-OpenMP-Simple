@@ -11,11 +11,25 @@ sub Inline {
   my $config = Alien::OpenMP->Inline($lang);
   $config->{AUTO_INCLUDE} .=q{
 
+#define TRUE  1
+#define FALSE 0
+
 /* %ENV Update Macros (doxygen style comments) */
+
+/* omp_set_cancellation doesn't exist in the spec
+#define PerlOMP_ENV_SET_CANCELLATION          \
+    char *VALUE = getenv("OMP_CANCELLATION"); \
+    if (strcmp(VALUE,"TRUE")) {               \
+      omp_set_cancellation(TRUE);             \
+    }                                         \
+    else if (strcmp(VALUE,"FALSE")) {         \
+      omp_set_cancellation(FALSE);            \
+    };                                        ///> read and update with $ENV{OMP_CANCELLATION} 
+*/
 
 #define PerlOMP_ENV_SET_NUM_THREADS           \
     char *num = getenv("OMP_NUM_THREADS");    \
-    omp_set_num_threads(atoi(num));           ///< read and update $ENV{OMP_NUM_THREADS}
+    omp_set_num_threads(atoi(num));           ///< read and update with $ENV{OMP_NUM_THREADS}
 
 #define PerlOMP_ENV_SET_SCHEDULE              \
     char *str = getenv("OMP_SCHEDULE");       \
@@ -38,7 +52,7 @@ sub Inline {
     if (pt != NULL) {                         \
       CHUNK = atoi(pt);                       \
     }                                         \
-    omp_set_schedule(SCHEDULE, CHUNK);        ///< read and update $ENV{OMP_SCHEDULE}
+    omp_set_schedule(SCHEDULE, CHUNK);        ///< read and update with $ENV{OMP_SCHEDULE}
 
 // ... add all of them from OpenMP::Environment, add unit tests
 
