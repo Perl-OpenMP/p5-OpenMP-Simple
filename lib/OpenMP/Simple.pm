@@ -189,6 +189,22 @@ represent a 2D matrix.
 
 =back
 
+=head1 SEE ALSO
+
+This is a module that aims at making it easier to bootstrap Perl+OpenMP programs. It is
+designed to work together with L<OpenMP::Environment>.
+
+This module heavily favors the C<GOMP> implementation of the OpenMP
+specification within gcc. In fact, it has not been tested with any
+other implementations.
+
+L<https://gcc.gnu.org/onlinedocs/libgomp/index.html>
+
+Please also see the C<rperl> project for a glimpse into the potential
+future of Perl+OpenMP, particularly in regards to thread-safe data structures.
+
+L<https://www.rperl.org>
+
 =head1 AUTHOR
 
 Oodler 577 L<< <oodler@cpane.org> >>
