@@ -11,11 +11,34 @@ sub Inline {
   my $config = Alien::OpenMP->Inline($lang);
   $config->{AUTO_INCLUDE} .=q{
 
-// NOTE: it is possible (and likely desirable) for this to become a .h file at some point //
-
 /* %ENV Update Macros (doxygen style comments) */
-#define PerlOMP_ENV_UPDATE_NUM_THREADS char *num = getenv("OMP_NUM_THREADS"); omp_set_num_threads(atoi(num)); ///< read and update $ENV{OMP_NUM_THREADS}
-#define PerlOMP_ENV_UPDATE_SCHEDULE char *str = getenv("OMP_SCHEDULE"); omp_set_schedule(str);                ///< read and update $ENV{OMP_SCHEDULE}
+
+#define PerlOMP_ENV_SET_NUM_THREADS        \
+    char *num = getenv("OMP_NUM_THREADS");    \
+    omp_set_num_threads(atoi(num));           ///< read and update $ENV{OMP_NUM_THREADS}
+
+#define PerlOMP_ENV_SET_SCHEDULE           \
+    char *str = getenv("OMP_SCHEDULE");       \
+    omp_sched_t SCHEDULE = omp_sched_static;  \
+    int CHUNK = 1; char *pt;                  \
+    pt = strtok (str,",");                    \
+    if (strcmp(pt,"static")) {                \
+      SCHEDULE = omp_sched_static;            \
+    }                                         \
+    else if (strcmp(pt,"dynamic")) {          \
+      SCHEDULE = omp_sched_dynamic;           \
+    }                                         \
+    else if (strcmp(pt,"guided")) {           \
+      SCHEDULE = omp_sched_guided;            \
+    }                                         \
+    else if (strcmp(pt,"auto")) {             \
+      SCHEDULE = omp_sched_auto;              \
+    }                                         \
+    pt = strtok (NULL, ",");                  \
+    if (pt != NULL) {                         \
+      CHUNK = atoi(pt);                       \
+    }                                         \
+    omp_set_schedule(SCHEDULE, CHUNK);        ///< read and update $ENV{OMP_SCHEDULE}
 
 // ... add all of them from OpenMP::Environment, add unit tests
 
@@ -139,7 +162,7 @@ environmental variable.
 
 =over 4
 
-=item C<PerlOMP_ENV_UPDATE_NUM_THREADS>
+=item C<PerlOMP_ENV_SET_NUM_THREADS>
 
 When used, the value of C<OMP_NUM_THREADS> will be read and be used to update with the runtime the
 number of threads via OpenMP standard runtime function, C<omp_set_num_threads> (as implemented by
