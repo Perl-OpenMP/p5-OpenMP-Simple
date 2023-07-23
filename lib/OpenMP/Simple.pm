@@ -24,16 +24,21 @@ All setters EXCEPT the LOCK retoutines,
  * DONE   omp_set_nested             8.3.0  – Enable/disable nested parallel regions
  * DONE   omp_set_max_active_levels  8.3.0  – Limits the number of active parallel regions
  * DONE   omp_set_num_teams         12.3.0  – Set upper teams limit for teams construct
- *   omp_set_teams_thread_limit – Set upper thread limit for teams construct
+ * wip  omp_set_teams_thread_limit – Set upper thread limit for teams construct
  *   omp_set_default_device – Set the default device for target regions
 **/
 
-#define PerlOMP_ENV_SET_NUM_TEAMS                         \
-    char *num = getenv("OMP_NUM_TEAMS");                  \
+#define PerlOMP_ENV_SET_TEAMS_THREAD_LIMIT                  \
+    char *num = getenv("OMP_TEAMS_THREAD_LIMIT");           \
+    omp_set_teams_thread_limit(atoi(num));            ///< read and update with $ENV{OMP_NUM_TEAMS}
+
+
+#define PerlOMP_ENV_SET_NUM_TEAMS                           \
+    char *num = getenv("OMP_NUM_TEAMS");                    \
     omp_set_num_teams(atoi(num));                    ///< read and update with $ENV{OMP_NUM_TEAMS}
 
-#define PerlOMP_ENV_SET_MAX_ACTIVE_LEVELS                  \
-    char *num = getenv("OMP_MAX_ACTIVE_LEVELS");           \
+#define PerlOMP_ENV_SET_MAX_ACTIVE_LEVELS                   \
+    char *num = getenv("OMP_MAX_ACTIVE_LEVELS");            \
     omp_set_max_active_levels(atoi(num));            ///< read and update with $ENV{OMP_MAX_ACTIVE_LEVELS}
 
 #define PerlOMP_ENV_SET_NUM_THREADS                         \
