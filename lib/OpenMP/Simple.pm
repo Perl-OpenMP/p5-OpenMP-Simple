@@ -17,15 +17,20 @@ sub Inline {
 All setters EXCEPT the LOCK retoutines,
   as defined at https://gcc.gnu.org/onlinedocs/libgomp/Runtime-Library-Routines.html
 
- * DONE  omp_set_num_threads        – Set upper team size limit
- * DONE  omp_set_schedule           – Set the runtime scheduling method
- * DONE  omp_set_dynamic            – Enable/disable dynamic teams
- * DONE  omp_set_nested             – Enable/disable nested parallel regions
- * wip  omp_set_max_active_levels  – Limits the number of active parallel regions
- *   omp_set_num_teams          – Set upper teams limit for teams construct
+   Status                            GCC*     Description
+ * DONE   omp_set_num_threads        8.3.0  – Set upper team size limit
+ * DONE   omp_set_schedule           8.3.0  – Set the runtime scheduling method
+ * DONE   omp_set_dynamic            8.3.0  – Enable/disable dynamic teams
+ * DONE   omp_set_nested             8.3.0  – Enable/disable nested parallel regions
+ * DONE   omp_set_max_active_levels  8.3.0  – Limits the number of active parallel regions
+ * DONE   omp_set_num_teams         12.3.0  – Set upper teams limit for teams construct
  *   omp_set_teams_thread_limit – Set upper thread limit for teams construct
  *   omp_set_default_device – Set the default device for target regions
 **/
+
+#define PerlOMP_ENV_SET_NUM_TEAMS                         \
+    char *num = getenv("OMP_NUM_TEAMS");                  \
+    omp_set_num_teams(atoi(num));                    ///< read and update with $ENV{OMP_NUM_TEAMS}
 
 #define PerlOMP_ENV_SET_MAX_ACTIVE_LEVELS                  \
     char *num = getenv("OMP_MAX_ACTIVE_LEVELS");           \
