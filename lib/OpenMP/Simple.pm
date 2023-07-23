@@ -11,25 +11,37 @@ sub Inline {
   my $config = Alien::OpenMP->Inline($lang);
   $config->{AUTO_INCLUDE} .=q{
 
-#define TRUE  1
-#define FALSE 0
-
 /* %ENV Update Macros (doxygen style comments) */
 
-/* omp_set_cancellation doesn't exist in the spec
-#define PerlOMP_ENV_SET_CANCELLATION          \
-    char *VALUE = getenv("OMP_CANCELLATION"); \
-    if (strcmp(VALUE,"TRUE")) {               \
-      omp_set_cancellation(TRUE);             \
-    }                                         \
-    else if (strcmp(VALUE,"FALSE")) {         \
-      omp_set_cancellation(FALSE);            \
-    };                                        ///> read and update with $ENV{OMP_CANCELLATION} 
-*/
+/**
+All setters EXCEPT the LOCK retoutines,
+  as defined at https://gcc.gnu.org/onlinedocs/libgomp/Runtime-Library-Routines.html
+
+ * DONE  omp_set_num_threads        – Set upper team size limit
+ * DONE  omp_set_schedule           – Set the runtime scheduling method
+ * wip  omp_set_dynamic            – Enable/disable dynamic teams
+ *   omp_set_nested             – Enable/disable nested parallel regions
+ *   omp_set_max_active_levels  – Limits the number of active parallel regions
+ *   omp_set_num_teams          – Set upper teams limit for teams construct
+ *   omp_set_teams_thread_limit – Set upper thread limit for teams construct
+ *   omp_set_default_device – Set the default device for target regions
+**/
 
 #define PerlOMP_ENV_SET_NUM_THREADS           \
     char *num = getenv("OMP_NUM_THREADS");    \
     omp_set_num_threads(atoi(num));           ///< read and update with $ENV{OMP_NUM_THREADS}
+
+#define PerlOMP_ENV_SET_DYNAMIC                             \
+    char *VALUE = getenv("OMP_DYNAMIC");                    \
+    if (VALUE == NULL) {                                    \
+      omp_set_dynamic(VALUE);                               \
+    }                                                       \
+    else if (strcmp(VALUE,"TRUE") || strcmp(VALUE,"true") || strcmp(VALUE,"1")) { \
+      omp_set_dynamic(1);                                   \
+    }                                                       \
+    else {                                                  \
+      omp_set_dynamic(NULL);                                \
+    };                                        ///> read and update with $ENV{OMP_DYNAMIC} 
 
 #define PerlOMP_ENV_SET_SCHEDULE              \
     char *str = getenv("OMP_SCHEDULE");       \
