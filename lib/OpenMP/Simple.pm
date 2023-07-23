@@ -19,7 +19,7 @@ All setters EXCEPT the LOCK retoutines,
 
  * DONE  omp_set_num_threads        – Set upper team size limit
  * DONE  omp_set_schedule           – Set the runtime scheduling method
- * wip  omp_set_dynamic            – Enable/disable dynamic teams
+ * DONE  omp_set_dynamic            – Enable/disable dynamic teams
  *   omp_set_nested             – Enable/disable nested parallel regions
  *   omp_set_max_active_levels  – Limits the number of active parallel regions
  *   omp_set_num_teams          – Set upper teams limit for teams construct

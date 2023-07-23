@@ -35,8 +35,8 @@ is _get_dynamic(), 0, sprintf qq{OMP_DYNAMIC is set as 'FALSE', is 0 (off), as e
 __DATA__
 __C__
 int _get_dynamic() {
-  int ret = 0;
   PerlOMP_ENV_SET_DYNAMIC
+  int ret = 0;
   #pragma omp parallel
   {
     #pragma omp single
