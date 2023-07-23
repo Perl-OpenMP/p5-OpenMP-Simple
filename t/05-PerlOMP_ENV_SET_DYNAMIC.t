@@ -6,8 +6,8 @@ use OpenMP::Environment;
 use Test::More tests => 6;
 
 use Inline (
-    C                 => 'DATA',
-    with              => qw/OpenMP::Simple/,
+    C    => 'DATA',
+    with => qw/OpenMP::Simple/,
 );
 
 my $env = OpenMP::Environment->new;
