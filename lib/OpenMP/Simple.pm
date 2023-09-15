@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.0.1};
+our $VERSION = q{0.0.2};
 
 sub Inline {
   my ($self, $lang) = @_;
@@ -126,12 +126,19 @@ void PerlOMP_1D_Array_TO_FLOAT_ARRAY_1D(SV *Aref, int numElements, float retArra
  * "#pragma omp for" work sharing construct
 */
  
+// contribued by CPAN's NERDVANA - thank you!
 void PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(SV *AoA, int numRows, int rowSize, float retArray[numRows][rowSize]) {
   SV **AVref;
+  if (!SvROK(AoA) || SvTYPE(SvRV(AoA)) != SVt_PVAV)
+    croak("Expected Arrayref");
   for (int i=0; i<numRows; i++) {
     AVref = av_fetch((AV*)SvRV(AoA), i, 0);
+    if (!AVref || !*AVref || !SvROK(*AVref) || SvTYPE(SvRV(*AVref)) != SVt_PVAV)
+      croak("Expected arrayref at array[%d]", i);
     for (int j=0; j<rowSize;j++) {
       SV **element = av_fetch((AV*)SvRV(*AVref), j, 0);
+      if (!element || !*element || !SvOK(*element))
+        croak("Expected value at array[%d][%d]", i, j);
       retArray[i][j] = SvNV(*element);
     }
   }
