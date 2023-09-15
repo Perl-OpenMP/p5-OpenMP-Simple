@@ -324,7 +324,7 @@ L<https://www.rperl.org>
 
 =head1 AUTHOR
 
-Oodler 577 L<< <oodler@cpane.org> >>
+Oodler 577 L<< <oodler@cpan.org> >>
 
 =head1 LICENSE & COPYRIGHT
 
