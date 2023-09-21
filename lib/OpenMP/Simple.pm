@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.0.2};
+our $VERSION = q{0.0.3};
 
 sub Inline {
   my ($self, $lang) = @_;
