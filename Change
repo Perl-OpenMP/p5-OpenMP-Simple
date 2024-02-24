@@ -13,3 +13,7 @@
       - breaking change, reflect a more consistent naming convention for the
         Perl-to-C data structure conversion macros
       - %s/PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D/PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY/g
+
+0.0.5  02/24/2024 09:45:00 AM MST
+      - updated more macro names to be more clear about purpose
+      - updated POD

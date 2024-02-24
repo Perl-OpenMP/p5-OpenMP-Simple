@@ -12,7 +12,7 @@ use Inline (
 
 my $env = OpenMP::Environment->new;
 
-note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV_MAX_ACTIVE_LEVELS'};
+note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV__MAX_ACTIVE_LEVELS'};
 for my $max_active_levels ( 1 .. 8 ) {
     my $current_value = $env->omp_max_active_levels($max_active_levels);
     is _get_max_active_levels(), $max_active_levels, sprintf qq{The number of threads (%0d) spawned in the OpenMP runtime via OMP_MAX_ACTIVE_LEVELS, as expected}, $max_active_levels;
@@ -21,7 +21,7 @@ for my $max_active_levels ( 1 .. 8 ) {
 __DATA__
 __C__
 int _get_max_active_levels() {
-  PerlOMP_UPDATE_WITH_ENV_MAX_ACTIVE_LEVELS
+  PerlOMP_UPDATE_WITH_ENV__MAX_ACTIVE_LEVELS
   int ret = 0;
   #pragma omp parallel
   {

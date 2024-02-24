@@ -12,7 +12,7 @@ use Inline (
 
 my $env = OpenMP::Environment->new;
 
-note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV_NESTED'};
+note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV__NESTED'};
 
 $env->omp_nested(1);
 is _get_nested(), 1, sprintf qq{OMP_NESTED is set as 1, is 1 (on), as expected};
@@ -35,7 +35,7 @@ is _get_nested(), 0, sprintf qq{OMP_NESTED is set as 'FALSE', is 0 (off), as exp
 __DATA__
 __C__
 int _get_nested() {
-  PerlOMP_UPDATE_WITH_ENV_NESTED
+  PerlOMP_UPDATE_WITH_ENV__NESTED
   int ret = 0;
   #pragma omp parallel
   {

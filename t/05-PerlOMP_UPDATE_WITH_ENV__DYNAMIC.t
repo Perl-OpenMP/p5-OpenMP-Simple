@@ -12,7 +12,7 @@ use Inline (
 
 my $env = OpenMP::Environment->new;
 
-note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV_DYNAMIC'};
+note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV__DYNAMIC'};
 
 $env->omp_dynamic(1);
 is _get_dynamic(), 1, sprintf qq{OMP_DYNAMIC is set as 1, is 1 (on), as expected};
@@ -35,7 +35,7 @@ is _get_dynamic(), 0, sprintf qq{OMP_DYNAMIC is set as 'FALSE', is 0 (off), as e
 __DATA__
 __C__
 int _get_dynamic() {
-  PerlOMP_UPDATE_WITH_ENV_DYNAMIC
+  PerlOMP_UPDATE_WITH_ENV__DYNAMIC
   int ret = 0;
   #pragma omp parallel
   {
