@@ -30,27 +30,27 @@ All setters EXCEPT the LOCK retoutines,
 
 /* %ENV Update Macros */
 
-#define PerlOMP_ENV_SET_DEFAULT_DEVICE                      \
+#define PerlOMP_UPDATE_WITH_ENV_DEFAULT_DEVICE                      \
     char *num = getenv("OMP_DEFAULT_DEVICE");               \
     omp_set_default_device(atoi(num));                      ///< read and update with $ENV{OMP_NUM_TEAMS}
 
-#define PerlOMP_ENV_SET_TEAMS_THREAD_LIMIT                  \
+#define PerlOMP_UPDATE_WITH_ENV_TEAMS_THREAD_LIMIT                  \
     char *num = getenv("OMP_TEAMS_THREAD_LIMIT");           \
     omp_set_teams_thread_limit(atoi(num));                  ///< read and update with $ENV{OMP_NUM_TEAMS}
 
-#define PerlOMP_ENV_SET_NUM_TEAMS                           \
+#define PerlOMP_UPDATE_WITH_ENV_NUM_TEAMS                           \
     char *num = getenv("OMP_NUM_TEAMS");                    \
     omp_set_num_teams(atoi(num));                           ///< read and update with $ENV{OMP_NUM_TEAMS}
 
-#define PerlOMP_ENV_SET_MAX_ACTIVE_LEVELS                   \
+#define PerlOMP_UPDATE_WITH_ENV_MAX_ACTIVE_LEVELS                   \
     char *num = getenv("OMP_MAX_ACTIVE_LEVELS");            \
     omp_set_max_active_levels(atoi(num));                   ///< read and update with $ENV{OMP_MAX_ACTIVE_LEVELS}
 
-#define PerlOMP_ENV_SET_NUM_THREADS                         \
+#define PerlOMP_UPDATE_WITH_ENV_NUM_THREADS                         \
     char *num = getenv("OMP_NUM_THREADS");                  \
     omp_set_num_threads(atoi(num));                         ///< read and update with $ENV{OMP_NUM_THREADS}
 
-#define PerlOMP_ENV_SET_DYNAMIC                             \
+#define PerlOMP_UPDATE_WITH_ENV_DYNAMIC                             \
     char *VALUE = getenv("OMP_DYNAMIC");                    \
     if (VALUE == NULL) {                                    \
       omp_set_dynamic(VALUE);                               \
@@ -62,7 +62,7 @@ All setters EXCEPT the LOCK retoutines,
       omp_set_dynamic(NULL);                                \
     };                                                      ///> read and update with $ENV{OMP_DYNAMIC} 
 
-#define PerlOMP_ENV_SET_NESTED                              \
+#define PerlOMP_UPDATE_WITH_ENV_NESTED                              \
     char *VALUE = getenv("OMP_NESTED");                     \
     if (VALUE == NULL) {                                    \
       omp_set_nested(VALUE);                                \
@@ -74,7 +74,7 @@ All setters EXCEPT the LOCK retoutines,
       omp_set_nested(NULL);                                 \
     };                                                      ///> read and update with $ENV{OMP_NESTED} 
 
-#define PerlOMP_ENV_SET_SCHEDULE                            \
+#define PerlOMP_UPDATE_WITH_ENV_SCHEDULE                            \
     char *str = getenv("OMP_SCHEDULE");                     \
     omp_sched_t SCHEDULE = omp_sched_static;                \
     int CHUNK = 1; char *pt;                                \
@@ -110,7 +110,7 @@ All setters EXCEPT the LOCK retoutines,
  * @param[out] void 
  */ 
 
-void PerlOMP_1D_Array_TO_FLOAT_ARRAY_1D(SV *Aref, int numElements, float retArray[numElements]) {
+void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY(SV *Aref, int numElements, float retArray[numElements]) {
   for (int i=0; i<numElements; i++) {
     SV **element = av_fetch((AV*)SvRV(Aref), i, 0);
     retArray[i] = SvNV(*element);
@@ -153,7 +153,7 @@ void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(SV *AoA, int numRows, int rowSize, float r
  * "#pragma omp for" work sharing construct
 */
 
-void PerlOMP_1D_Array_TO_INT_ARRAY_1D(SV *Aref, int numElements, int retArray[numElements]) {
+void PerlOMP_1D_Array_TO_1D_INT_ARRAY(SV *Aref, int numElements, int retArray[numElements]) {
   for (int i=0; i<numElements; i++) {
     SV **element = av_fetch((AV*)SvRV(Aref), i, 0);
     retArray[i] = SvIV(*element);
@@ -169,7 +169,7 @@ void PerlOMP_1D_Array_TO_INT_ARRAY_1D(SV *Aref, int numElements, int retArray[nu
  * "#pragma omp for" work sharing construct
 */
  
-void PerlOMP_2D_AoA_TO_INT_ARRAY_2D(SV *AoA, int numRows, int rowSize, int retArray[numRows][rowSize]) {
+void PerlOMP_2D_AoA_TO_2D_INT_ARRAY(SV *AoA, int numRows, int rowSize, int retArray[numRows][rowSize]) {
   SV **AVref;
   for (int i=0; i<numRows; i++) {
     AVref = av_fetch((AV*)SvRV(AoA), i, 0);
@@ -239,46 +239,46 @@ C<OpenMP::Simple>'s macros with C<OpenMP::Environment>.
 
 =over 4
 
-=item C<PerlOMP_ENV_SET_NUM_THREADS>
+=item C<PerlOMP_UPDATE_WITH_ENV_NUM_THREADS>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_NUM_THREADS}>,
 which is managed via C<< OpenMP::Environment->omp_num_threads[int numThreads]); >>.
 
-=item C<PerlOMP_ENV_SET_DEFAULT_DEVICE>
+=item C<PerlOMP_UPDATE_WITH_ENV_DEFAULT_DEVICE>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_DEFAULT_DEVICE}>,
 which is managed via C<< OpenMP::Environment->omp_default_device([int deviceNo]); >>.
 
-=item C<PerlOMP_ENV_SET_MAX_ACTIVE_LEVELS>
+=item C<PerlOMP_UPDATE_WITH_ENV_MAX_ACTIVE_LEVELS>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_MAX_ACTIVE_LEVELS}>,
 which is managed via C<< OpenMP::Environment->omp_max_active_levels([int maxLevel]); >>.
 
-=item C<PerlOMP_ENV_SET_DYNAMIC>
+=item C<PerlOMP_UPDATE_WITH_ENV_DYNAMIC>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_DYNAMIC}>,
 which is managed via C<< OpenMP::Environment->omp_dynamic(['true'|'false']); >>.
 
-=item C<PerlOMP_ENV_SET_NESTED>
+=item C<PerlOMP_UPDATE_WITH_ENV_NESTED>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_NESTED}>,
 which is managed via C<< OpenMP::Environment->omp_nested(['true'|'false']); >>.
 
-=item C<PerlOMP_ENV_SET_SCHEDULE>
+=item C<PerlOMP_UPDATE_WITH_ENV_SCHEDULE>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_SCHEDULE}>,
 which is managed via C<< OpenMP::Environment->omp_schedule(...); >>.
 
 Note: The schedule syntax is of the form I<schedule[;chunkSize]>.
 
-=item C<PerlOMP_ENV_SET_TEAMS_THREAD_LIMIT>
+=item C<PerlOMP_UPDATE_WITH_ENV_TEAMS_THREAD_LIMIT>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_TEAMS_THREAD_LIMIT}>,
 which is managed via C<< OpenMP::Environment->omp_([int limit]); >>.
 
 Note: Not supported until GCC 12.3.0
 
-=item C<PerlOMP_ENV_SET_NUM_TEAMS>
+=item C<PerlOMP_UPDATE_WITH_ENV_NUM_TEAMS>
 
 Updates the OpenMP runtime with the value of the environmental variable, C<$ENV{OMP_NUM_TEAMS}>,
 which is managed via C<< OpenMP::Environment->omp_([int num]); >>.

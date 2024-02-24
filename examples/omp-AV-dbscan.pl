@@ -125,7 +125,7 @@ __C__
 AV* omp_rangeQuery(SV *AoA, int dims, int A, float eps) {
 
   /* boilerplate */
-  PerlOMP_ENV_SET_NUM_THREADS
+  PerlOMP_UPDATE_WITH_ENV_NUM_THREADS
   PerlOMP_RET_ARRAY_REF_ret
 
   /* non-boilerplate */

@@ -13,7 +13,7 @@ use Inline (
 
 my $env = OpenMP::Environment->new;
 
-note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_ENV_SET_NUM_THREADS'};
+note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV_NUM_THREADS'};
 
 # generate schedule value look up
 my $schedules = {};
@@ -39,7 +39,7 @@ done_testing;
 __DATA__
 __C__
 void _set_schedule_with_macro() {
-  PerlOMP_ENV_SET_SCHEDULE
+  PerlOMP_UPDATE_WITH_ENV_SCHEDULE
 }
 
 int _get_schedule() {
