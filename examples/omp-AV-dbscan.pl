@@ -133,7 +133,7 @@ AV* omp_rangeQuery(SV *AoA, int dims, int A, float eps) {
 
   /* get 2d array ref into a 2d C array */
   float nodes[num_nodes][dims];
-  PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(AoA, num_nodes, dims, nodes);
+  PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(AoA, num_nodes, dims, nodes);
 
   float A_x = nodes[A][0];
   float A_y = nodes[A][1];

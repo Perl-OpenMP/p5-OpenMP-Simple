@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.0.3};
+our $VERSION = q{0.0.4};
 
 sub Inline {
   my ($self, $lang) = @_;
@@ -127,7 +127,7 @@ void PerlOMP_1D_Array_TO_FLOAT_ARRAY_1D(SV *Aref, int numElements, float retArra
 */
  
 // contribued by CPAN's NERDVANA - thank you!
-void PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(SV *AoA, int numRows, int rowSize, float retArray[numRows][rowSize]) {
+void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(SV *AoA, int numRows, int rowSize, float retArray[numRows][rowSize]) {
   SV **AVref;
   if (!SvROK(AoA) || SvTYPE(SvRV(AoA)) != SVt_PVAV)
     croak("Expected Arrayref");
@@ -296,13 +296,13 @@ current scope). Used when wanting to return an array reference that's been popul
 
 =over 4
 
-=item C<PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(AoA, num_nodes, dims, nodes)>
+=item C<PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(AoA, num_nodes, dims, nodes)>
 
 Used to extract the contents of a 2D rectangular Perl array reference that has been used to
 represent a 2D matrix.
 
     float nodes[num_nodes][dims];
-    PerlOMP_2D_AoA_TO_FLOAT_ARRAY_2D(AoA, num_nodes, dims, nodes);
+    PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(AoA, num_nodes, dims, nodes);
 
 =back
 
