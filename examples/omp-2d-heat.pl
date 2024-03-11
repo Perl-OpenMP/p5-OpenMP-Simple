@@ -43,7 +43,6 @@ __C__
 #define H        1.0   
 #define _METHOD  2 
 #define ITERMAX  10    
-#define ROOT     0
 
 /* Includes */
 #include <stdio.h>
@@ -150,26 +149,23 @@ int run_2dheat(int height, int width, int _meth, int verbose, float t_src0, floa
   init_domain(U_Next,my_rank);
   
   /* iterate for solution */
-  if (my_rank == ROOT) {
-    gettimeofday(&tv, &tz);
-    tm=localtime(&tv.tv_sec);
-    time = 1000000*(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec) + tv.tv_usec; 
-  }
+  gettimeofday(&tv, &tz);
+  tm=localtime(&tv.tv_sec);
+  time = 1000000*(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec) + tv.tv_usec; 
   k = 1;
 
   num_threads = 0;    
+
   for(;;) {
     method(U_Curr,U_Next);
 
     local_convergence_sqd = get_convergence_sqd(U_Curr,U_Next,my_rank);
     convergence_sqd = local_convergence_sqd;
-    if (my_rank == ROOT) {
-      convergence = sqrt(convergence_sqd);
-      if (verbose > 0) {
-        printf("L2 = %f\n",convergence);
-        fflush(stdout);
-      }
-    } 
+    convergence = sqrt(convergence_sqd);
+    if (verbose > 0) {
+      printf("L2 = %f\n",convergence);
+      fflush(stdout);
+    }
 
     /* broadcast method to use */
     if (convergence <= EPSILON) {
@@ -186,12 +182,10 @@ int run_2dheat(int height, int width, int _meth, int verbose, float t_src0, floa
   }   
 
   /* say something at the end */
-  if (my_rank == ROOT) {
-    gettimeofday(&tv, &tz);
-    tm=localtime(&tv.tv_sec);
-    time = 1000000*(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec) + tv.tv_usec - time; 
-    printf("convergence in %d iterations using %d processors on a %dx%d grid is %d microseconds\n",k,num_threads,(int)floor(WIDTH/H),(int)floor(HEIGHT/H),time);
-  }
+  gettimeofday(&tv, &tz);
+  tm=localtime(&tv.tv_sec);
+  time = 1000000*(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec) + tv.tv_usec - time; 
+  printf("convergence in %d iterations using %d processors on a %dx%d grid is %d microseconds\n",k,num_threads,(int)floor(WIDTH/H),(int)floor(HEIGHT/H),time);
 }
 
  /* used by each PE to compute the sum of the squared diffs between current iteration and previous */
@@ -390,16 +384,8 @@ int run_2dheat(int height, int width, int _meth, int verbose, float t_src0, floa
    } else {
      /* Else, return value for matrix supplied or ghost rows */
      if (j < get_start(rank)) {
-       if (rank == ROOT) {
-         /* not interested in above ghost row */
-         ret_val = 0.0;
-       } else { 
-         ret_val = above_ptr[i];
-         /*
-	 printf("%d: Used ghost (%d,%d) row from above = %f\n",rank,i,j,above_ptr[i]);
-	 fflush(stdout);
-         */
-       }
+       /* not interested in above ghost row */
+       ret_val = 0.0;
      } else if (j > get_end(rank)) {
        if (rank == (p-1)) {
          /* not interested in below ghost row */
