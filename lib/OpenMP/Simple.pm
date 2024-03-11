@@ -102,6 +102,16 @@ All setters EXCEPT the LOCK retoutines,
 /* Output Init Macros (needed?) */
 #define PerlOMP_RET_ARRAY_REF_ret AV* ret = newAV();sv_2mortal((SV*)ret);
 
+/* Datastructure Introspection Functions*/
+
+/**
+ * Returns the number of elements in a 1D array from Perl
+ */
+
+int PerlOMP_1D_AoA_NUM_ELEMENTS (SV *AoA) {
+  return av_count((AV*)SvRV(AoA));
+}
+
 /* Datatype Converters (doxygen style comments) */
 
 /**
@@ -171,14 +181,21 @@ void PerlOMP_1D_Array_TO_1D_INT_ARRAY(SV *Aref, int numElements, int retArray[nu
  
 void PerlOMP_2D_AoA_TO_2D_INT_ARRAY(SV *AoA, int numRows, int rowSize, int retArray[numRows][rowSize]) {
   SV **AVref;
+  if (!SvROK(AoA) || SvTYPE(SvRV(AoA)) != SVt_PVAV)
+    croak("Expected Arrayref");
   for (int i=0; i<numRows; i++) {
     AVref = av_fetch((AV*)SvRV(AoA), i, 0);
+    if (!AVref || !*AVref || !SvROK(*AVref) || SvTYPE(SvRV(*AVref)) != SVt_PVAV)
+      croak("Expected arrayref at array[%d]", i);
     for (int j=0; j<rowSize;j++) {
       SV **element = av_fetch((AV*)SvRV(*AVref), j, 0);
-      retArray[i][j] = SvIV(*element);
+      if (!element || !*element || !SvOK(*element))
+        croak("Expected value at array[%d][%d]", i, j);
+      retArray[i][j] = SvNV(*element);
     }
   }
 }
+
 
 /* TODO:
   * add unit tests for conversion functions
