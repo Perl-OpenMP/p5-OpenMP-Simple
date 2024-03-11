@@ -9,7 +9,6 @@ use Util::H2O::More qw/ddd Getopt2h2o h2o/;
 use Inline (
     C           => 'DATA',
     with        => qw/OpenMP::Simple/,
-    BUILD_NOISY => 1,
 );
 
 # init options
@@ -18,7 +17,7 @@ my $o = Getopt2h2o \@ARGV, {
     height  => 1000,
     method  => q{gauss-seidel},
     t0      => q{550.0},
-    threads => 2,
+    threads => 4,
     verbose => 0,
     width   => 1000,
 },  qw/height=i method=s t0=s threads=s verbose epsilon=s/;
