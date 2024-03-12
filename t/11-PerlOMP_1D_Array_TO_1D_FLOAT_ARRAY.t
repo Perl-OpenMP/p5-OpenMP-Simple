@@ -99,7 +99,7 @@ AV* omp_get_renew_aref(SV *ARRAY) {
     }
 
   for(int i=0; i<num_elements; i++) {
-    av_push(ret, newSVnv((float)sum[i]));
+    av_push(ret, newSVnv(sum[i]));
   }
 
   // AV* 'ret' comes from "PerlOMP_RET_ARRAY_REF_ret" macro called above
