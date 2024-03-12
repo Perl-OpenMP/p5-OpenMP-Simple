@@ -108,8 +108,8 @@ All setters EXCEPT the LOCK retoutines,
  * Returns the number of elements in a 1D array from Perl
  */
 
-int PerlOMP_1D_AoA_NUM_ELEMENTS (SV *AoA) {
-  return av_count((AV*)SvRV(AoA));
+int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref) {
+  return av_count((AV*)SvRV(AVref));
 }
 
 /* Datatype Converters (doxygen style comments) */
@@ -120,10 +120,34 @@ int PerlOMP_1D_AoA_NUM_ELEMENTS (SV *AoA) {
  * @param[out] void 
  */ 
 
-void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY(SV *Aref, int numElements, float retArray[numElements]) {
-  for (int i=0; i<numElements; i++) {
-    SV **element = av_fetch((AV*)SvRV(Aref), i, 0);
+void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY(SV *AVref, int numElements, float retArray[numElements]) {
+  AV *array    = (AV*)SvRV(AVref);
+  SV **element;
+  for (int i=0; i<numElements;i++) {
+    element = av_fetch(array, i, 0);
+    if (!element || !*element || !SvOK(*element))
+      croak("Expected value at array[%d]", i);
     retArray[i] = SvNV(*element);
+  }
+}
+
+/* 1D Array reference to 1D int C array ...
+ * Convert a regular M-element Perl array consisting of inting point values, e.g.,
+ *
+ *   my $Aref = [ 10, 314, 527, 911, 538 ];
+ *
+ * into a C array of the same dimensions so that it can be used as exepcted with an OpenMP
+ * "#pragma omp for" work sharing construct
+*/
+
+void PerlOMP_1D_Array_TO_1D_INT_ARRAY(SV *AVref, int numElements, int retArray[numElements]) {
+  AV *array    = (AV*)SvRV(AVref);
+  SV **element;
+  for (int i=0; i<numElements;i++) {
+    element = av_fetch(array, i, 0);
+    if (!element || !*element || !SvOK(*element))
+      croak("Expected value at array[%d]", i);
+    retArray[i] = SvIV(*element);
   }
 }
 
@@ -151,22 +175,6 @@ void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(SV *AoA, int numRows, int rowSize, float r
         croak("Expected value at array[%d][%d]", i, j);
       retArray[i][j] = SvNV(*element);
     }
-  }
-}
-
-/* 1D Array reference to 1D int C array ...
- * Convert a regular M-element Perl array consisting of inting point values, e.g.,
- *
- *   my $Aref = [ 10, 314, 527, 911, 538 ];
- *
- * into a C array of the same dimensions so that it can be used as exepcted with an OpenMP
- * "#pragma omp for" work sharing construct
-*/
-
-void PerlOMP_1D_Array_TO_1D_INT_ARRAY(SV *Aref, int numElements, int retArray[numElements]) {
-  for (int i=0; i<numElements; i++) {
-    SV **element = av_fetch((AV*)SvRV(Aref), i, 0);
-    retArray[i] = SvIV(*element);
   }
 }
 

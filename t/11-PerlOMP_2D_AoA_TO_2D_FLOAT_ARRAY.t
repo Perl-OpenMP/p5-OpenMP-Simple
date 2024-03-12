@@ -59,7 +59,7 @@ foreach my $thread_count (qw/1 2 4 8 16/) {
   my $aref_new     = omp_get_renew_aref( $aref_orig, scalar @{$aref_orig->[0]} );
   my $seen_rows    = shift @$aref_new;
   my $seen_threads = shift @$aref_new;
-  is $seen_rows, scalar @$aref_orig, q{PerlOMP_1D_AoA_NUM_ELEMENTS works on original ARRAY reference};
+  is $seen_rows, scalar @$aref_orig, q{PerlOMP_1D_Array_NUM_ELEMENTS works on original ARRAY reference};
   is $seen_threads, $thread_count, qq{OMP_NUM_THREADS=$thread_count is respected inside of the, omp parallel section, as expected};
   cmp_deeply $aref_new, $expected, qq{Row summed array ref returned as expected from $thread_count OpenMP threads};
   cmp_deeply $aref_new, $expected, qq{PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY worked to convert original ARRAY reference to raw C 2D array of floats};
@@ -81,7 +81,7 @@ AV* omp_get_renew_aref(SV *AoA, int row_size) {
   PerlOMP_RET_ARRAY_REF_ret
 
   /* non-boilerplate (for the test, we want this to apply to all rows, though) */
-  int num_rows = PerlOMP_1D_AoA_NUM_ELEMENTS(AoA);
+  int num_rows = PerlOMP_1D_Array_NUM_ELEMENTS(AoA);
   av_push(ret, newSViv(num_rows));
 
   /* get 2d array ref into a 2d C array */

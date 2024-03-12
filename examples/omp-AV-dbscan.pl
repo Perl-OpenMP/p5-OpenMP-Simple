@@ -130,7 +130,7 @@ AV* omp_rangeQuery(SV *AoA, int dims, int A, float eps) {
   PerlOMP_RET_ARRAY_REF_ret
 
   /* non-boilerplate */
-  int num_nodes = PerlOMP_1D_AoA_NUM_ELEMENTS(AoA);
+  int num_nodes = PerlOMP_1D_Array_NUM_ELEMENTS(AoA);
 
   /* get 2d array ref into a 2d C array */
   float nodes[num_nodes][dims];                                  // create native 2D array as target
