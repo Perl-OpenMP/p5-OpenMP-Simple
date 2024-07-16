@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.0.5};
+our $VERSION = q{0.0.6};
 
 sub Inline {
   my ($self, $lang) = @_;
@@ -12,7 +12,7 @@ sub Inline {
   $config->{AUTO_INCLUDE} .=q{
 
 /**
-All setters EXCEPT the LOCK retoutines,
+All setters EXCEPT the LOCK routines,
   as defined at https://gcc.gnu.org/onlinedocs/libgomp/Runtime-Library-Routines.html
 
    Status                              GCC*     Description
@@ -22,35 +22,35 @@ All setters EXCEPT the LOCK retoutines,
  - DONE   omp_set_dynamic              8.3.0  – Enable/disable dynamic teams
  - DONE   omp_set_nested               8.3.0  – Enable/disable nested parallel regions
  - DONE   omp_set_max_active_levels    8.3.0  – Limits the number of active parallel regions
- - DONE   omp_set_default_device       8.3.0 – Set the default device for target regions
+ - DONE   omp_set_default_device       8.3.0  – Set the default device for target regions
  - DONE   omp_set_num_teams           12.3.0  – Set upper teams limit for teams construct
- - DONE   omp_set_teams_thread_limit  12.3.0 – Set upper thread limit for teams construct
+ - DONE   omp_set_teams_thread_limit  12.3.0  – Set upper thread limit for teams construct
 +-------------------------------------------------------------------------------------------+
 **/
 
 /* %ENV Update Macros */
 
-#define PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE                      \
+#define PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE             \
     char *num = getenv("OMP_DEFAULT_DEVICE");               \
     omp_set_default_device(atoi(num));                      ///< read and update with $ENV{OMP_NUM_TEAMS}
 
-#define PerlOMP_UPDATE_WITH_ENV__TEAMS_THREAD_LIMIT                  \
+#define PerlOMP_UPDATE_WITH_ENV__TEAMS_THREAD_LIMIT         \
     char *num = getenv("OMP_TEAMS_THREAD_LIMIT");           \
     omp_set_teams_thread_limit(atoi(num));                  ///< read and update with $ENV{OMP_NUM_TEAMS}
 
-#define PerlOMP_UPDATE_WITH_ENV__NUM_TEAMS                           \
+#define PerlOMP_UPDATE_WITH_ENV__NUM_TEAMS                  \
     char *num = getenv("OMP_NUM_TEAMS");                    \
     omp_set_num_teams(atoi(num));                           ///< read and update with $ENV{OMP_NUM_TEAMS}
 
-#define PerlOMP_UPDATE_WITH_ENV__MAX_ACTIVE_LEVELS                   \
+#define PerlOMP_UPDATE_WITH_ENV__MAX_ACTIVE_LEVELS          \
     char *num = getenv("OMP_MAX_ACTIVE_LEVELS");            \
     omp_set_max_active_levels(atoi(num));                   ///< read and update with $ENV{OMP_MAX_ACTIVE_LEVELS}
 
-#define PerlOMP_UPDATE_WITH_ENV__NUM_THREADS                         \
+#define PerlOMP_UPDATE_WITH_ENV__NUM_THREADS                \
     char *num = getenv("OMP_NUM_THREADS");                  \
     omp_set_num_threads(atoi(num));                         ///< read and update with $ENV{OMP_NUM_THREADS}
 
-#define PerlOMP_UPDATE_WITH_ENV__DYNAMIC                             \
+#define PerlOMP_UPDATE_WITH_ENV__DYNAMIC                    \
     char *VALUE = getenv("OMP_DYNAMIC");                    \
     if (VALUE == NULL) {                                    \
       omp_set_dynamic(VALUE);                               \
@@ -62,7 +62,7 @@ All setters EXCEPT the LOCK retoutines,
       omp_set_dynamic(NULL);                                \
     };                                                      ///> read and update with $ENV{OMP_DYNAMIC} 
 
-#define PerlOMP_UPDATE_WITH_ENV__NESTED                              \
+#define PerlOMP_UPDATE_WITH_ENV__NESTED                     \
     char *VALUE = getenv("OMP_NESTED");                     \
     if (VALUE == NULL) {                                    \
       omp_set_nested(VALUE);                                \
@@ -74,7 +74,7 @@ All setters EXCEPT the LOCK retoutines,
       omp_set_nested(NULL);                                 \
     };                                                      ///> read and update with $ENV{OMP_NESTED} 
 
-#define PerlOMP_UPDATE_WITH_ENV__SCHEDULE                            \
+#define PerlOMP_UPDATE_WITH_ENV__SCHEDULE                   \
     char *str = getenv("OMP_SCHEDULE");                     \
     omp_sched_t SCHEDULE = omp_sched_static;                \
     int CHUNK = 1; char *pt;                                \
@@ -222,12 +222,12 @@ __END__
 
 =head1 NAME
 
-OpenMP::Simple - Provides some DWIM helpers for using OpenMP via C<Inline::C>.
+OpenMP::Simple - Provides some DWIM C functions and MACROs, built on top of L<Alien::OpenMP>.
 
 =head1 SYNOPSIS
 
-    use OpenMP::Simple;
-    use OpenMP::Environment;
+    use OpenMP::Simple;      # uses Alien::OpenMP, provides helpful C MACROs
+    use OpenMP::Environment; # setters/getters for important OpenMP environmental variables 
     
     use Inline (
         C                 => 'DATA',
@@ -241,42 +241,49 @@ will only improve. Feedback is very valuable, so please reach out to L<<
 OODLER <oodler@cpan.org> >> or visit the I<Perl+OpenMP> Github repository,
 L<https://github.com/Perl-OpenMP>.
 
-=head1 DESCRIPTION AND DISCUSSION
+=head1 DESCRIPTION
+
+C<OpenMP::Simple> is meant to work together with C<OpenMP::Environment>
+in a way that provides the same runtime control experience that OpenMP's
+environmental variables provides.
 
 Contained here is essentially a set of macros and C<Inline::C> defined C<C>
 functions that make it easier for Perl programs to interface basic Perl
 structures more directly with C<Inline::C> functions for use with OpenMP It
 also containes macros that emulate the access of OpenMP programs to C<%ENV>
-at program start up, and through this module, during runtime. Note: normal
-OpenMP programs do not re-sample C<%ENV> during runtime, but C<OpenMP::Simple>
-provides macros to do just that; so this module provides an additional
-level of control that so that C<OpenMP::Environment> may be used effectively
-during the running of a Perl program that contains C<Inline::C> functions
-with OpenMP inside of them.
+at program start up, and through this module, during runtime.
+
+Note: normal OpenMP programs do not re-sample C<%ENV> during runtime, but
+C<OpenMP::Simple> provides macros to do just that; so this module provides an
+additional level of control that so that C<OpenMP::Environment> may be used
+effectively during the running of a Perl program that contains C<Inline::C>
+functions with OpenMP inside of them.
 
 As a reminder, the OpenMP standard has several aspects that work in concert
-to make shared memory programming (with SMP threads) more accessible. These
-aspects may be summarized as the following:
+to make shared memory programming (with NUMA/SMP threads) more accessible.
+These aspects may be summarized as the following:
 
 =over 4
 
-=item a runtime and library of functions that may be used to programatically
-affect execution and work distribution; here is where this module,
-L<OpenMP::Simple> makes a contribution to extending the promise of OpenMP
-to Perl programmers.
+=item 1. a runtime and library of runtime callable functions
 
-=item a set of environmental variables (i.e., C<%ENV>) that can be used to
-control the OpenMP runtime; this aspect is where the L<OpenMP::Environment>
-module comes into play.
+that may be used to programatically affect execution and work distribution;
+here is where this module, L<OpenMP::Simple> makes a contribution to extending
+the promise of OpenMP to Perl programmers.
 
-=item work sharing constructs used to implicitly share memory and executions
-among a series of threads; these are implemented directly into the C<C> code,
-and is also where most of the hard work for anyone (including Perl programmers)
-exists. I.e., making OpenMP more I<perlish>. It also may including in the
-future, using OpenMP I<inside> of the C<perl> interpreter itself; but this
-is the domain of core Perl maintainers and experts in language semantics.
-No attempt has been made so far to address this large and very fruitful area
-of exploration.
+=item 2. a set of environmental variables (i.e., C<%ENV>)
+
+that can be used to control the OpenMP runtime; this aspect is where the
+L<OpenMP::Environment> module comes into play.
+
+=item 3. work sharing constructs
+used to implicitly share memory and executions among a series of threads;
+these are implemented directly into the C<C> code, and is also where most
+of the hard work for anyone (including Perl programmers) exists. I.e.,
+making OpenMP more I<perlish>. It also may including in the future, using
+OpenMP I<inside> of the C<perl> interpreter itself; but this is the domain
+of core Perl maintainers and experts in language semantics.  No attempt has
+been made so far to address this large and very fruitful area of exploration.
 
 =back
 
@@ -378,6 +385,11 @@ reference that's been populated via C<av_push>.
 
 =head1 PROVIDED PERL TO C CONVERSION FUNCTIONS
 
+B<Note>: Work is currently focused on finding the true limits of the Perl C
+API. It is likely that in a lot of cases, elements in Perl Arrays (AV) and Perl
+Hashes (HV) maybe accessed safely without first transferring the entire data
+structures into its C<pure C> equivalent.
+
 =over 4
 
 =item C<PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(AoA, num_nodes, dims, nodes)>
@@ -408,7 +420,7 @@ L<https://www.rperl.org>
 
 =head1 AUTHOR
 
-Oodler 577 L<< <oodler@cpan.org> >>
+Brett Estrade L<< <oodler@cpan.org> >>
 
 =head1 LICENSE & COPYRIGHT
 
