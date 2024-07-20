@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.0.9};
+our $VERSION = q{0.1.0};
 
 # This module is a wrapper around a ".h" file that is injected into Alien::OpenMP
 # via Inline:C's AUTO_INCLUDE feature. This header file constains C MACROs for reading
@@ -115,11 +115,11 @@ All setters EXCEPT the LOCK routines,
     }
 
 /* bundled Macros */
-#define PerlOMP_GETENV_OMP_Basic                            \
+#define PerlOMP_GETENV_BASIC                                \
     PerlOMP_UPDATE_WITH_ENV__NUM_THREADS                    \ 
     PerlOMP_UPDATE_WITH_ENV__SCHEDULE
 
-#define PerlOMP_GETENV_OMP_All                              \
+#define PerlOMP_GETENV_ALL                                  \
     PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE                 \
     PerlOMP_UPDATE_WITH_ENV__TEAMS_THREAD_LIMIT             \
     PerlOMP_UPDATE_WITH_ENV__NUM_TEAMS                      \
@@ -288,7 +288,7 @@ runtime functions
   __C__
 
   int _check_num_threads() {
-    PerlOMP_GETENV_OMP_Basic
+    PerlOMP_GETENV_BASIC
     int ret = 0;
     #pragma omp parallel
     {
@@ -339,7 +339,7 @@ with C<OpenMP::Environment>.
 
 =over 4
 
-=item C<PerlOMP_Basic>
+=item C<PerlOMP_GETENV_OMP_Basic>
 
 Equivalent of using,
 
@@ -350,7 +350,7 @@ The purpose of this bundled approach is to make it easier to get started
 quickly. This list may be updated between versions. This is the recommended
 one to use when starting with this module. See the L<SYNOPSIS> example.
 
-=item C<PerlOMP_All>
+=item C<PerlOMP_GETENV_OMP_All>
 
 Equivalent of using,
 

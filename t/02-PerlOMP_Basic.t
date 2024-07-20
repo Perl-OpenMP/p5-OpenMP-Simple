@@ -21,7 +21,7 @@ for my $num_threads ( 1 .. 8 ) {
 __DATA__
 __C__
 int _test_num_threads() {
-  PerlOMP_GETENV_OMP_Basic
+  PerlOMP_GETENV_BASIC
   int ret = 0;
   // See https://stackoverflow.com/questions/11071116/i-got-omp-get-num-threads-always-return-1-in-gcc-works-in-icc
   #pragma omp parallel

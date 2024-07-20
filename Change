@@ -34,3 +34,6 @@
         of variables supported in this module
       - PerlOMP_GETENV_Basic
       - PerlOMP_GETENV_All
+
+0.1.0  07/20/2024 09:46:00 PM MST
+      - fixed important POD typos
