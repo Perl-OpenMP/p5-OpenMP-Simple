@@ -287,18 +287,15 @@ runtime functions
   __DATA__
   __C__
 
-  /* C function parallelized with OpenMP */
   int _check_num_threads() {
+    PerlOMP_GETENV_OMP_Basic
     int ret = 0;
-
-    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS /* <~ MACRO x OpenMP::Simple */
-
+    // See https://stackoverflow.com/questions/11071116/i-got-omp-get-num-threads-always-return-1-in-gcc-works-in-icc
     #pragma omp parallel
     {
       #pragma omp single
       ret = omp_get_num_threads();
     }
-
     return ret;
   }
 
@@ -351,7 +348,8 @@ Equivalent of using,
   PerlOMP_UPDATE_WITH_ENV__NUM_SCHEDULE
 
 The purpose of this bundled approach is to make it easier to get started
-quickly. This list may be updated between versions.
+quickly. This list may be updated between versions. This is the recommended
+one to use when starting with this module. See the L<SYNOPSIS> example.
 
 =item C<PerlOMP_All>
 

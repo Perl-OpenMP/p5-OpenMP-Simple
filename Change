@@ -32,3 +32,5 @@
       - added a couple new macros for bundling a group of environmental
         variables to make it easier to get started and get the full set
         of variables supported in this module
+      - PerlOMP_GETENV_Basic
+      - PerlOMP_GETENV_All
