@@ -115,11 +115,11 @@ All setters EXCEPT the LOCK routines,
     }
 
 /* bundled Macros */
-#define PerlOMP_Basic                                       \
+#define PerlOMP_GETENV_OMP_Basic                            \
     PerlOMP_UPDATE_WITH_ENV__NUM_THREADS                    \ 
     PerlOMP_UPDATE_WITH_ENV__SCHEDULE
 
-#define PerlOMP_All                                         \
+#define PerlOMP_GETENV_OMP_All                              \
     PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE                 \
     PerlOMP_UPDATE_WITH_ENV__TEAMS_THREAD_LIMIT             \
     PerlOMP_UPDATE_WITH_ENV__NUM_TEAMS                      \
