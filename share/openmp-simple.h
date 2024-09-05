@@ -98,7 +98,7 @@ All setters EXCEPT the LOCK routines,
 
 /* bundled Macros */
 #define PerlOMP_GETENV_BASIC                                \
-    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS                    \ 
+    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS                    \
     PerlOMP_UPDATE_WITH_ENV__SCHEDULE
 
 #define PerlOMP_GETENV_ALL                                  \
@@ -130,9 +130,9 @@ int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref) {
 
 /**
  * Converts a 1D Perl Array Reference (AV*) into a 1D C array of floats; allocates retArray[numElements] by reference
- * @param[in] *Aref, int numElements, float retArray[numElements] 
- * @param[out] void 
- */ 
+ * @param[in] *Aref, int numElements, float retArray[numElements]
+ * @param[out] void
+ */
 
 void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY(SV *AVref, int numElements, float retArray[numElements]) {
   AV *array    = (AV*)SvRV(AVref);
@@ -173,7 +173,7 @@ void PerlOMP_1D_Array_TO_1D_INT_ARRAY(SV *AVref, int numElements, int retArray[n
  * into a C array of the same dimensions so that it can be used as expected with an OpenMP
  * "#pragma omp for" work sharing construct
 */
- 
+
 // contribued by CPAN's NERDVANA - thank you!
 void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(SV *AoA, int numRows, int rowSize, float retArray[numRows][rowSize]) {
   SV **AVref;
@@ -200,7 +200,7 @@ void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(SV *AoA, int numRows, int rowSize, float r
  * into a C array of the same dimensions so that it can be used as expected with an OpenMP
  * "#pragma omp for" work sharing construct
 */
- 
+
 void PerlOMP_2D_AoA_TO_2D_INT_ARRAY(SV *AoA, int numRows, int rowSize, int retArray[numRows][rowSize]) {
   SV **AVref;
   if (!SvROK(AoA) || SvTYPE(SvRV(AoA)) != SVt_PVAV)
