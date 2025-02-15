@@ -1,0 +1,43 @@
+name: Perl CI with Inline::C and OpenMP
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, rockylinux/latest]  # Ubuntu and RHEL-compatible Rocky Linux
+        perl: [5.26, 5.28, 5.30, 5.32, 5.34, 5.36, 5.38, 5.40]  # Test multiple Perl versions
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Perl (Ubuntu)
+        if: runner.os == 'Linux' && contains(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y perlbrew build-essential libgomp1
+          perlbrew init
+          perlbrew install perl-${{ matrix.perl }}
+          perlbrew use perl-${{ matrix.perl }}
+
+      - name: Install Perl (RHEL)
+        if: runner.os == 'Linux' && contains(matrix.os, 'rockylinux')
+        run: |
+          sudo dnf install -y perl-App-cpanminus @development-tools gcc libgomp
+          curl -L https://install.perlbrew.pl | bash
+          source ~/perl5/perlbrew/etc/bashrc
+          perlbrew install perl-${{ matrix.perl }}
+          perlbrew use perl-${{ matrix.perl }}
+
+      - name: Install Perl Modules
+        run: |
+          cpanm --notest Inline::C Dist::Zilla Alien::OpenMP
+
+      - name: Run `dzil test`
+        run: |
+          dzil test
+

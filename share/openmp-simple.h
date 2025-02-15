@@ -106,16 +106,6 @@ All setters EXCEPT the LOCK routines,
 /* Output Init Macros (needed?) */
 #define PerlOMP_RET_ARRAY_REF_ret AV* ret = newAV();sv_2mortal((SV*)ret);
 
-/* Datastructure Introspection Functions*/
-
-/**
- * Returns the number of elements in a 1D array from Perl
- */
-
-int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref) {
-  return av_count((AV*)SvRV(AVref));
-}
-
 /* Datatype Converters (doxygen style comments) */
 
 /**
@@ -276,6 +266,65 @@ void PerlOMP_2D_AoA_TO_2D_INT_ARRAY_r(SV *AoA, int numRows, int rowSize, int ret
       retArray[i][j] = SvNV(*element);
     }
   }
+}
+
+/* Datastructure Introspection Functions*/
+
+/**
+ * Returns the number of elements in a 1D array from Perl
+ */
+
+int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref) {
+  return av_count((AV*)SvRV(AVref));
+}
+
+/* Datastructure Introspection Functions*/
+
+/**
+ * Returns the number of rows in a 2D array from Perl
+ */
+
+int PerlOMP_2D_AoA_NUM_ROWS(SV *AoAref) {
+    if (!SvROK(AoAref)) {
+        croak("Expected an array reference");
+        return -1;
+    }
+
+    AV *av = (AV *)SvRV(AoAref);
+    if (SvTYPE(av) != SVt_PVAV) {
+        croak("Expected an array reference, but got a different reference type");
+        return -1;
+    }
+
+    return av_count(av);
+}
+
+int PerlOMP_2D_AoA_NUM_COLS(SV *AoAref) {
+    if (!SvROK(AoAref)) {
+        croak("Expected an array reference");
+        return -1;
+    }
+
+    AV *av = (AV *)SvRV(AoAref);
+    if (SvTYPE(av) != SVt_PVAV) {
+        croak("Expected an array reference, but got a different reference type");
+        return -1;
+    }
+
+    // Get the first row (another array reference)
+    SV **first_row_sv = av_fetch(av, 0, 0);
+    if (!first_row_sv || !SvROK(*first_row_sv)) {
+        croak("First element is not a valid array reference");
+        return -1;
+    }
+
+    AV *first_row = (AV *)SvRV(*first_row_sv);
+    if (SvTYPE(first_row) != SVt_PVAV) {
+        croak("First row is not an array reference");
+        return -1;
+    }
+
+    return av_count(first_row);
 }
 
 /* TODO:
