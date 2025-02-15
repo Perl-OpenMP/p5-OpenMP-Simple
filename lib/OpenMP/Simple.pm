@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.1.8};
+our $VERSION = q{0.1.9};
 
 # This module is a wrapper around a ".h" file that is injected into Alien::OpenMP
 # via Inline:C's AUTO_INCLUDE feature. This header file constains C MACROs for reading
@@ -185,6 +185,24 @@ survive outside of the current scope). Used when wanting to return an array
 reference that's been populated via C<av_push>.
 
 =back
+
+=head PROVIDED PERL ARRAY COUNTING FUNCTIONS
+
+=item C<int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref)>
+
+Returns the integer count of number of elements in the array reference. The 
+functino doesn't care what is in the elements.
+
+=item C<int PerlOMP_2D_AoA_NUM_ROWS(SV *AoAref)>
+
+Returns the integer count of number of rows in a 2D array reference. The
+fucntion doesn't care what the rows looks like or what is in them
+
+=item C<int PerlOMP_2D_AoA_NUM_COLS(SV *AoAref)>
+
+Returns the number of elements in the first row of the provided 2D array
+reference. It assumes all rows are the same. It doesn't verify the contents
+of each row.
 
 =head1 PROVIDED PERL TO C CONVERSION FUNCTIONS
 
