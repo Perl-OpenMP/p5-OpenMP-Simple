@@ -29,24 +29,15 @@ jobs:
           sudo dnf install -y @development-tools gcc libgomp perl-App-cpanminus
           sudo dnf install -y perl-Inline-C perl-Dist-Zilla  # Install Inline::C and Dist::Zilla
 
-      # ---- Windows (Strawberry Perl) ----
-      - name: Set Up Strawberry Perl
-        if: runner.os == 'Windows'
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: "latest"
-
       # ---- Install Perl Modules ----
       - name: Install and Test Perl Modules
         run: |
-          cpanm --verbose --notest Inline::C Dist::Zilla Alien::OpenMP  # Install base dependencies
-          cpanm --verbose --force --test-only Inline::C Dist::Zilla Alien::OpenMP  # Run module tests
+          cpanm --verbose Alien::OpenMP  # Install base dependencies
 
       # ---- Install Author Dependencies ----
       - name: Install dzil authordeps
         run: |
           dzil authordeps --missing | cpanm --verbose --notest  # Install required author dependencies
-          dzil authordeps --missing | cpanm --verbose --force --test-only  # Run tests for dependencies
 
       # ---- Run `dzil test` ----
       - name: Run `dzil test`
