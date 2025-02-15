@@ -72,6 +72,7 @@
         utility;
 
 0.1.9  02/15/2025 01:08:00 AM MST
+      - moved a flapping test out of the for future work
       - added counting functions::
         - int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref)
         - int PerlOMP_2D_AoA_NUM_ROWS(SV *AoAref)
