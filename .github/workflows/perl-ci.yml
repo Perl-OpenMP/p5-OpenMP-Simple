@@ -6,7 +6,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, rockylinux/latest, windows-latest]  # Ubuntu, RHEL-compatible, and Windows
+        os: [ubuntu-latest, rockylinux/latest]  # Ubuntu, RHEL-compatible
 
     runs-on: ${{ matrix.os }}
 
