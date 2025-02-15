@@ -1,0 +1,46 @@
+name: Perl CI with Inline::C and OpenMP
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, rockylinux/latest]  # Ubuntu, RHEL-compatible
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ---- Linux (Ubuntu) ----
+      - name: Install Build Essentials (Ubuntu)
+        if: runner.os == 'Linux' && contains(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgomp1 cpanminus
+          sudo apt-get install -y libinline-c-perl libdist-zilla-perl  # Install Inline::C and Dist::Zilla
+
+      # ---- Linux (RHEL) ----
+      - name: Install Build Essentials (RHEL)
+        if: runner.os == 'Linux' && contains(matrix.os, 'rockylinux')
+        run: |
+          sudo dnf install -y @development-tools gcc libgomp perl-App-cpanminus
+          sudo dnf install -y perl-Inline-C perl-Dist-Zilla  # Install Inline::C and Dist::Zilla
+
+      # ---- Install Perl Modules ----
+      - name: Install and Test Perl Modules
+        run: |
+          sudo cpanm --verbose Alien::OpenMP Util::H2O::More File::Temp Test::Exception OpenMP::Environment File::ShareDir  # Install base dependencies
+
+      # ---- Install Author Dependencies ----
+      - name: Install dzil authordeps
+        run: |
+          dzil authordeps --missing | sudo cpanm --verbose # Install required author dependencies
+
+      # ---- Run `dzil test` ----
+      - name: Run `dzil test`
+        run: |
+          dzil test
+
