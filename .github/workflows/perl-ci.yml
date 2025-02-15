@@ -32,7 +32,7 @@ jobs:
       # ---- Install Perl Modules ----
       - name: Install and Test Perl Modules
         run: |
-          sudo cpanm --verbose Alien::OpenMP  # Install base dependencies
+          sudo cpanm --verbose Alien::OpenMP Util::H2O::More File::Temp Test::Exception OpenMP::Environment File::ShareDir  # Install base dependencies
 
       # ---- Install Author Dependencies ----
       - name: Install dzil authordeps
