@@ -6,14 +6,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: 
-          - ubuntu-20.04
-          - ubuntu-22.04
-          - ubuntu-24.04
-          - debian-10
-          - debian-11
-          - debian-12
-
+        os: [ubuntu-latest]  # can be comma delimited list
+        perl: [system]  # Use the Perl that comes pre-installed
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -30,13 +24,14 @@ jobs:
       # ---- Install Perl Modules via CPAN ----
       - name: Install Additional Perl Modules via CPAN
         run: |
-          cpanm --verbose Alien::OpenMP Util::H2O::More File::Temp \
-                 Test::Exception OpenMP::Environment File::ShareDir
+         sudo  cpanm --verbose Alien::OpenMP Util::H2O::More File::Temp \
+                 Test::Exception Test::Deep OpenMP::Environment File::ShareDir
 
       # ---- Install Author Dependencies ----
       - name: Install dzil authordeps
         run: |
-          dzil authordeps --missing | cpanm --verbose  # Install required author dependencies
+          dzil authordeps --missing | sudo cpanm --verbose             # Install required author dependencies
+          sudo cpanm --verbose Dist::Zilla::Plugin::VersionFromModule  # this may be redundant
         
       # ---- Run `dzil test` ----
       - name: Run `dzil test`
