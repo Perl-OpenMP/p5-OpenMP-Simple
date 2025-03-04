@@ -6,7 +6,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, debian-latest]  # Updated to include latest Debian
+        os: [ubuntu-latest]  # can be comma delimited list 
         perl: [system]  # Use the Perl that comes pre-installed
     runs-on: ${{ matrix.os }}
 
@@ -30,8 +30,8 @@ jobs:
       # ---- Install Author Dependencies ----
       - name: Install dzil authordeps
         run: |
-          dzil authordeps --missing | sudo cpanm --verbose  # Install required author dependencies
-          sudo cpanm --verbose Dist::Zilla::Plugin::VersionFromModule 
+          dzil authordeps --missing | sudo cpanm --verbose             # Install required author dependencies
+          sudo cpanm --verbose Dist::Zilla::Plugin::VersionFromModule  # this may be redundant
         
       # ---- Run `dzil test` ----
       - name: Run `dzil test`
