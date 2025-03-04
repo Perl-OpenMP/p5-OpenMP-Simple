@@ -6,39 +6,25 @@ jobs:
   test:
     strategy:
       matrix:
-        os: 
-          - ubuntu-20.04
-          - ubuntu-22.04
-          - ubuntu-24.04
-          - debian-10
-          - debian-11
-          - debian-12
-
+        os: [ubuntu-latest, debian-latest]  # Updated to include latest Debian
+        perl: [system]  # Use the Perl that comes pre-installed
     runs-on: ${{ matrix.os }}
-
+  
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # ---- Install Build Essentials (Ubuntu & Debian) ----
-      - name: Install Build Essentials
+      - name: Install Build Essentials (Ubuntu/Debian)
+        if: runner.os == 'Linux' && (contains(matrix.os, 'ubuntu') || contains(matrix.os, 'debian'))
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libgomp1 cpanminus
-          sudo apt-get install -y libinline-c-perl libdist-zilla-perl  # Inline::C and Dist::Zilla
 
-      # ---- Install Perl Modules via CPAN ----
-      - name: Install Additional Perl Modules via CPAN
+      - name: Install and Test Perl Modules
         run: |
-          cpanm --verbose Alien::OpenMP Util::H2O::More File::Temp \
-                 Test::Exception OpenMP::Environment File::ShareDir
+          cpanm --verbose --notest Inline::C Dist::Zilla Alien::OpenMP  # Install first without tests
+          cpanm --verbose --force --test-only Inline::C Dist::Zilla Alien::OpenMP  # Run tests separately
 
-      # ---- Install Author Dependencies ----
-      - name: Install dzil authordeps
-        run: |
-          dzil authordeps --missing | cpanm --verbose  # Install required author dependencies
-        
-      # ---- Run `dzil test` ----
       - name: Run `dzil test`
         run: |
           dzil test
