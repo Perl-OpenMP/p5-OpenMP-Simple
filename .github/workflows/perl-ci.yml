@@ -25,7 +25,7 @@ jobs:
       - name: Install Additional Perl Modules via CPAN
         run: |
          sudo  cpanm --verbose Alien::OpenMP Util::H2O::More File::Temp \
-                 Test::Exception OpenMP::Environment File::ShareDir
+                 Test::Exception Test::Deep OpenMP::Environment File::ShareDir
 
       # ---- Install Author Dependencies ----
       - name: Install dzil authordeps
