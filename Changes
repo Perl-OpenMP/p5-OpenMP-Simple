@@ -72,6 +72,9 @@
         utility;
 
 0.1.9  02/15/2025 01:08:00 AM MST
+      - bad bump, see 0.2.0
+
+0.2.0  03/05/2025 01:08:00 AM MST
       - moved a flapping test out of the for future work
       - added counting functions::
         - int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref)
@@ -80,6 +83,6 @@
         - void PerlOMP_1D_Array_TO_1D_STRING_ARRAY(SV *AVref, int numElements, char *retArray[numElements])
         - void PerlOMP_1D_Array_TO_1D_STRING_ARRAY_r(SV *AVref, int numElements, char *retArray[numElements])
       - added Github initial CI testing
-      - started documentation
+      - updated documentation
       - added Github initial CI testing for latest Ubuntu,
-      - added VERIFY C functions
+      - added VERIFY C functions (see POD)
