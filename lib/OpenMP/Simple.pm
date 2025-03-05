@@ -366,10 +366,10 @@ L<https://www.rperl.org>
 
 Brett Estrade L<< <oodler@cpan.org> >>
 
-=haed1 AI GENERATED CODE DISCLAIMER
+=head1 AI GENERATED CODE DISCLAIMER
 
-Please be advised, for full transparency (and to set a good precedence),
-one should not that the conversion functions, verification functions, their
+B<Please be advised>, for full transparency (and to set a good precedence,)
+please note that the conversion functions, verification functions, their
 POD entries, and testing functions werge generated with great assistance
 using the "I<Perl Programming Expert By DRAKOPOULOS ANASTASIOS>" chatGPT.
 
