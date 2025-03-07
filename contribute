@@ -12,7 +12,7 @@ with OpenMP more idiomatic for use in Perl code.
 If you have an idea, you may submit a feature request; but be as
 descriptive as possible. It is even better if you have an example
 implementation in the form of a Perl script. You may create an issue,
-then submit a Pull Request or attach the code in the Issue you creat..
+then submit a Pull Request or attach the code in the Issue you create.
 
 # Submitting a Pull Request
 
