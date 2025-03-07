@@ -91,3 +91,7 @@
       - updated POD
       - renamed, "PerlOMP_VERIFY_1D_CHAR_ARRAY" to
         "PerlOMP_VERIFY_1D_STRING_ARRAY" for consistency
+
+0.2.2  03/07/2025 11:08:00 PM MST
+      - major POD update
+      - cleaned up some tests 
