@@ -81,3 +81,13 @@ if this is necessary for your testing or debugging situation.
 
 You will not have to do this, but note that the `Makefile` is for making
 releases. Normal contributors will not need to use the included `Makefile`.
+
+For general information the process is:
+
+1. `make prepare`
+2. `git commit -a -m "rolling VERSION"`
+3. `git tag VERSION`
+4. `git push origin master`
+5. `git push origin VERSION`
+6. `dzil release`
+
