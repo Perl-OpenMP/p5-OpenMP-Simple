@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.2.2};
+our $VERSION = q{0.2.3};
 
 # This module is a wrapper around a ".h" file that is injected into Alien::OpenMP
 # via Inline:C's AUTO_INCLUDE feature. This header file constains C macros for reading
@@ -137,14 +137,14 @@ one to use when starting with this module. See the L<SYNOPSIS> example.
 =head3 C<PerlOMP_UPDATE_WITH_ENV__NUM_THREADS>
 
 Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_NUM_THREADS}>, which is managed via
-C<< OpenMP::Environment->omp_num_threads[int numThreads]); >>.
+variable, C<$ENV{OMP_NUM_THREADS}>, which is meant to be managed with
+L<OpenMP::Environment>.
 
 =head3 C<PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE>
 
 Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_DEFAULT_DEVICE}>, which is managed
-via C<< OpenMP::Environment->omp_default_device([int deviceNo]); >>.
+variable, C<$ENV{OMP_DEFAULT_DEVICE}>, which is meant to be managed with
+L<OpenMP::Environment>.
 
   use strict;
   use warnings;
@@ -184,28 +184,24 @@ via C<< OpenMP::Environment->omp_default_device([int deviceNo]); >>.
 =head3 C<PerlOMP_UPDATE_WITH_ENV__MAX_ACTIVE_LEVELS>
 
 Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_MAX_ACTIVE_LEVELS}>, which is managed
-via C<< OpenMP::Environment->omp_max_active_levels([int maxLevel]); >>.
+variable, C<$ENV{OMP_MAX_ACTIVE_LEVELS}>, which is meant to be managed with L<OpenMP::Environment>.
+
 
 =head3 C<PerlOMP_UPDATE_WITH_ENV__DYNAMIC>
 
 Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_DYNAMIC}>, which is managed
-via C<< OpenMP::Environment->omp_dynamic(['true'|'false']); >>.
+variable, C<$ENV{OMP_DYNAMIC}>, which is meant to be managed with L<OpenMP::Environment>.
+
 
 =head3 C<PerlOMP_UPDATE_WITH_ENV__NESTED>
 
 Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_NESTED}>, which is managed
-via C<< OpenMP::Environment->omp_nested(['true'|'false']); >>.
+variable, C<$ENV{OMP_NESTED}>, which is meant to be managed with L<OpenMP::Environment>.
 
 =head3 C<PerlOMP_UPDATE_WITH_ENV__SCHEDULE>
 
 Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_SCHEDULE}>, which is managed
-via C<< OpenMP::Environment->omp_schedule(...); >>.
-
-Note: The schedule syntax is of the form I<schedule[;chunkSize]>.
+variable, C<$ENV{OMP_SCHEDULE}>, which is meant to be managed with L<OpenMP::Environment>.
 
   use strict;
   use warnings;
@@ -238,7 +234,7 @@ Note: The schedule syntax is of the form I<schedule[;chunkSize]>.
       _set_schedule_with_macro();
       my $set_schedule = _get_schedule();
       is $set_schedule, $schedules->$sched, sprintf qq{Schedule '%s' set in the OpenMP runtime, as expected.}, $sched;
-      my $set_chunk = _get_chunk(); 
+      my $set_chunk = _get_chunk();
       is $chunk, $set_chunk, sprintf qq{Chunk size '% 5d' set in the OpenMP runtime, as expected.}, $set_chunk;
     }
   }
@@ -299,14 +295,14 @@ Note: The schedule syntax is of the form I<schedule[;chunkSize]>.
 =head3 C<PerlOMP_UPDATE_WITH_ENV__TEAMS_THREAD_LIMIT>
 
 Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_TEAMS_THREAD_LIMIT}>, which is managed via C<< OpenMP::Environment->omp_([int limit]); >>.
+variable, C<$ENV{OMP_TEAMS_THREAD_LIMIT}>, which is meant to be managed with L<OpenMP::Environment>.
 
 Note: C<OMP_TEAMS_THREAD_LIMIT> is not supported until GCC 12.3.0
 
 =head3 C<PerlOMP_UPDATE_WITH_ENV__NUM_TEAMS>
 
 Updates the OpenMP runtime with the value of the environmental variable,
-C<$ENV{OMP_NUM_TEAMS}>, which is managed via C<< OpenMP::Environment->omp_([int num]); >>.
+C<$ENV{OMP_NUM_TEAMS}>, which is meant to be managed with L<OpenMP::Environment>.
 
 Note: C<OMP_NUM_TEAMS> is not supported until GCC 12.3.0
 
@@ -319,7 +315,7 @@ reference that's been populated via C<av_push>.
   __DATA__
   __C__
 
-  void some_inline_c_function (... 
+  void some_inline_c_function (...
     
     ...
 
