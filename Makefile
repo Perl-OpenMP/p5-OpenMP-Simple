@@ -1,6 +1,7 @@
 clean:
 	dzil clean
 	rm -rf _Inline
+	rm -rf t/_Inline
 
 test: clean
 	dzil test
