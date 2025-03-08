@@ -338,12 +338,12 @@ reference that's been populated via C<av_push>.
 =head2 C<int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref)>
 
 Returns the integer count of number of elements in the array reference. The 
-functino doesn't care what is in the elements.
+function doesn't care what is in the elements.
 
 =head2 C<int PerlOMP_2D_AoA_NUM_ROWS(SV *AoAref)>
 
 Returns the integer count of number of rows in a 2D array reference. The
-fucntion doesn't care what the rows looks like or what is in them
+function doesn't care what the rows looks like or what is in them
 
 =head2 C<int PerlOMP_2D_AoA_NUM_COLS(SV *AoAref)>
 
