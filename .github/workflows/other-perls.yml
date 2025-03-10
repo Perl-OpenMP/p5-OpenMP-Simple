@@ -1,0 +1,45 @@
+name: Perl CI with Inline::C and OpenMP
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        perl: ["5.36", "5.34", "5.32"]  # Last three stable versions of Perl
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ---- Set Up Perl using Perlbrew ----
+      - name: Install Perl
+        uses: shogo82148/actions-perlbrew@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+
+      # ---- Install Build Essentials ----
+      - name: Install Build Essentials
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgomp1
+
+      # ---- Install Perl Modules via CPAN ----
+      - name: Install Required Perl Modules via CPAN
+        run: |
+          sudo cpanm --notest --verbose Alien::OpenMP Util::H2O::More File::Temp \
+                Test::Exception Test::Deep OpenMP::Environment File::ShareDir \
+                Inline::C Dist::Zilla
+
+      # ---- Install Author Dependencies ----
+      - name: Install dzil authordeps
+        run: |
+          dzil authordeps --missing | cpanm --notest --verbose
+          sudo cpanm --notest --verbose Dist::Zilla::Plugin::VersionFromModule  # Redundant but ensures presence
+
+      # ---- Run `dzil test` ----
+      - name: Run `dzil test`
+        run: |
+          dzil test
