@@ -31,7 +31,7 @@ jobs:
       - name: Set Dist::Zilla for 'dzil test' command
         run: |
           dzil authordeps --missing | cpanm --verbose             # Install required author dependencies
-          cpanm --verbose Dist::Zilla::Plugin::VersionFromModule  # this may be redundant
+          cpanm --verbose --notest Dist::Zilla::Plugin::VersionFromModule  # this may be redundant
 
       - name: Run Tests
         run: dzil test
