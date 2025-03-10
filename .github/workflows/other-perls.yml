@@ -18,7 +18,7 @@ jobs:
           perl-version: ${{ matrix.perl }}
       - run: perl -V
       - run: perl -v
-      - run: cpanm --verbose --noptest Inline::C Alien::OpenMP Util::H2O::More File::Temp \
+      - run: cpanm --verbose --notest Inline::C Alien::OpenMP Util::H2O::More File::Temp \
              Test::Exception Test::Deep OpenMP::Environment File::ShareDir
       - run: cpanm --notest .
       - run: prove -lv t
