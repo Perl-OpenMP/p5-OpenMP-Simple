@@ -1,0 +1,37 @@
+name: Perl CI with Inline::C and OpenMP
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        perl: ["5.40","5.38","5.36","5.34","5.32","5.30","5.28","5.26","5.24","5.22","5.20"]
+    name: Perl ${{ matrix.perl }} on ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+
+      - run: perl -V
+      - run: perl -v
+
+      - name: Install Required Perl Modules
+        run: |
+          cpanm --verbose --notest Module::Build Inline::C Alien::OpenMP \
+                Util::H2O::More File::Temp Test::Exception Test::Deep \
+                OpenMP::Environment File::ShareDir Dist::Zilla
+
+      - name: Set Dist::Zilla for 'dzil test' command
+        run: |
+          dzil authordeps --missing | cpanm --verbose             # Install required author dependencies
+          cpanm --verbose --notest Dist::Zilla::Plugin::VersionFromModule  # this may be redundant
+
+      - name: Run Tests
+        run: dzil test
