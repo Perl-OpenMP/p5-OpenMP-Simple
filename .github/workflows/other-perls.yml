@@ -38,6 +38,7 @@ jobs:
           echo "PERL_LOCAL_LIB_ROOT=$PERL_LOCAL_LIB_ROOT" >> $GITHUB_ENV
           echo "PERL_MB_OPT=$PERL_MB_OPT" >> $GITHUB_ENV
           echo "PERL_MM_OPT=$PERL_MM_OPT" >> $GITHUB_ENV
+          cpanm --verbose .
 
       - name: Run Tests
-        run: prove -lv t
+        run: prove -v ./t
