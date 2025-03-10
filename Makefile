@@ -2,9 +2,10 @@ clean:
 	dzil clean
 	rm -rf _Inline
 	rm -rf t/_Inline
+	rm -rf blib
 
 test: clean
-	dzil test
+	./test-runner.sh	
 
 prepare: clean
 	dzil build 
