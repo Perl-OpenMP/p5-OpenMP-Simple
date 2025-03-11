@@ -6,9 +6,10 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false  # Ensures that one failing job does not cancel others
       matrix:
-        os: ["ubuntu-latest"]
-        perl: ["5.40","5.38","5.36","5.34","5.32","5.30","5.28","5.26","5.24","5.22","5.20"]
+        os: ["ubuntu-latest","ubuntu-22.04"]
+        perl: ["5.40","5.38","5.36","5.34","5.32","5.30","5.28","5.26","5.24","5.22","5.20","5.18","5.16","5.14","5.12"]
     name: Perl ${{ matrix.perl }} on ${{ matrix.os }}
 
     steps:
@@ -26,12 +27,8 @@ jobs:
         run: |
           cpanm --verbose --notest Module::Build Inline::C Alien::OpenMP \
                 Util::H2O::More File::Temp Test::Exception Test::Deep \
-                OpenMP::Environment File::ShareDir Dist::Zilla
-
-      - name: Set Dist::Zilla for 'dzil test' command
-        run: |
-          dzil authordeps --missing | cpanm --verbose             # Install required author dependencies
-          cpanm --verbose --notest Dist::Zilla::Plugin::VersionFromModule  # this may be redundant
+                OpenMP::Environment File::ShareDir
 
       - name: Run Tests
-        run: dzil test
+        run: ./test-runner.sh
+        if: always()  # Ensures tests run even if a previous step failed
