@@ -9,7 +9,7 @@ jobs:
       fail-fast: false  # Ensures that one failing job does not cancel others
       matrix:
         os: ["ubuntu-latest","ubuntu-22.04"]
-        perl: ["5.40","5.38","5.36","5.34","5.32","5.30","5.28","5.26","5.24","5.22","5.20","5.18","5.16","5.14","5.12"]
+        perl: ["5.40","5.38","5.36","5.34","5.32","5.30","5.28","5.26","5.24","5.22","5.20","5.18","5.16","5.14","5.12","5.10"]
     name: Perl ${{ matrix.perl }} on ${{ matrix.os }}
 
     steps:
@@ -26,8 +26,11 @@ jobs:
       - name: Install Required Perl Modules
         run: |
           cpanm --verbose --notest Module::Build Inline::C Alien::OpenMP \
-                Util::H2O::More File::Temp Test::Exception Test::Deep \
+                Util::H2O::More File::Temp Test::Exception \
                 OpenMP::Environment File::ShareDir
+          
+          # Conditionally install Test::Deep if Perl version >= 5.12
+          perl -e 'exit 1 if $] < 5.012' && cpanm --verbose --notest Test::Deep || echo "Skipping Test::Deep for Perl < 5.12"
 
       - name: Run Tests
         run: ./test-runner.sh
