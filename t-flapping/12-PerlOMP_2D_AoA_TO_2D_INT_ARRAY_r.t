@@ -8,13 +8,15 @@ use Test::More;
 my $has_test_deep = 1;
 BEGIN {
   if ($] < 5.012) {
-   $has_test_deep = 0;
-  } else {
-   eval { require Test::Deep; Test::Deep->import(); 1 } or $has_test_deep = 0;
+    $has_test_deep = 0;
+  }
+  else {
+    eval { require Test::Deep; Test::Deep->import(); 1 } or $has_test_deep = 0;
   }
   # mock cmp_deeply
   if (not $has_test_deep) {
-   eval { *cmp_deeply = sub { 1 } };
+    no warnings qw/redefine/;
+    eval { *cmp_deeply = sub { 1 } };
   }
 }
 
