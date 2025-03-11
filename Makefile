@@ -4,6 +4,11 @@ clean:
 	rm -rf t/_Inline
 	rm -rf blib
 
+clean2:
+	rm -rf _Inline
+	rm -rf t/_Inline
+	rm -rf blib
+
 test: clean
 	./test-runner.sh	
 
