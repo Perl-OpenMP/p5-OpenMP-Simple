@@ -1,0 +1,77 @@
+name: OpenMP::Environment master compatibility
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  environment-master:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Representative points across the supported Perl range. The exhaustive
+        # released-dependency sweep remains in other-perls.yml.
+        perl:
+          - "5.44"
+          - "5.42"
+          - "5.40"
+          - "5.36"
+          - "5.32"
+          - "5.24"
+          - "5.16"
+          - "5.10"
+
+    name: Perl ${{ matrix.perl }} + OpenMP::Environment master
+
+    steps:
+      - name: Check out OpenMP::Simple
+        uses: actions/checkout@v4
+
+      - name: Check out OpenMP::Environment master
+        uses: actions/checkout@v4
+        with:
+          repository: Perl-OpenMP/p5-OpenMP-Environment
+          ref: master
+          path: .ci/OpenMP-Environment
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+
+      - name: Report Perl and compiler configuration
+        shell: bash
+        run: |
+          perl -V
+          perl -MConfig -E 'say "Config cc=$Config::Config{cc}"; say "Config gccversion=$Config::Config{gccversion}"'
+          gcc --version
+
+      - name: Install OpenMP::Simple and Environment-master dependencies
+        shell: bash
+        run: |
+          cpanm --verbose --notest Module::Build Inline::C Alien::OpenMP \
+                Util::H2O::More File::Temp Test::Exception File::ShareDir \
+                Dispatch::Fu Validate::Tiny Util::H2O
+
+          if perl -e 'exit($] < 5.012 ? 1 : 0)'; then
+            cpanm --verbose --notest Test::Deep
+          else
+            echo "Skipping Test::Deep for Perl < 5.12"
+          fi
+
+      - name: Verify Environment master is the module under test
+        shell: bash
+        env:
+          PERL5LIB: ${{ github.workspace }}/.ci/OpenMP-Environment/lib
+        run: |
+          perl -MOpenMP::Environment -E 'say "OpenMP::Environment=$OpenMP::Environment::VERSION from $INC{q{OpenMP/Environment.pm}}"'
+          perl -MOpenMP::Environment::Validation -E 'say "Validation module loaded from $INC{q{OpenMP/Environment/Validation.pm}}"'
+          perl -MAlien::OpenMP -E 'say "Alien::OpenMP=$Alien::OpenMP::VERSION"; say "cflags=".Alien::OpenMP->cflags; say "libs=".Alien::OpenMP->libs'
+
+      - name: Run OpenMP::Simple tests against Environment master
+        shell: bash
+        env:
+          PERL5LIB: ${{ github.workspace }}/.ci/OpenMP-Environment/lib
+        run: perl ./test-runner.pl

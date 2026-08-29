@@ -3,7 +3,7 @@ use warnings;
 
 use OpenMP::Simple;
 use OpenMP::Environment;
-use Test::More tests => 6;
+use Test::More tests => 7;
 
 use Inline (
     C    => 'DATA',
@@ -32,11 +32,14 @@ is _get_nested(), 1, sprintf qq{OMP_NESTED is set as 'TRUE', is 1 (on), as expec
 $env->omp_nested('FALSE');
 is _get_nested(), 0, sprintf qq{OMP_NESTED is set as 'FALSE', is 0 (off), as expected};
 
+delete $ENV{OMP_NESTED};
+is _get_nested(), 0, q{Missing OMP_NESTED preserves the macro's historical disabled default};
+
 __DATA__
 __C__
 int _get_nested() {
-  PerlOMP_UPDATE_WITH_ENV__NESTED
   int ret = 0;
+  PerlOMP_UPDATE_WITH_ENV__NESTED
   #pragma omp parallel
   {
     #pragma omp single
