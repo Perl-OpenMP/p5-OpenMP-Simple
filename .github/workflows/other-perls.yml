@@ -1,15 +1,39 @@
-name: Perl CI with Inline::C and OpenMP
+name: Perl compatibility
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false  # Ensures that one failing job does not cancel others
+      fail-fast: false
       matrix:
-        os: ["ubuntu-latest","ubuntu-22.04"]
-        perl: ["5.40","5.38","5.36","5.34","5.32","5.30","5.28","5.26","5.24","5.22","5.20","5.18","5.16","5.14","5.12","5.10"]
+        # Keep two Linux generations here to preserve the existing compatibility
+        # intent. Compiler-specific coverage lives in gcc-matrix.yml.
+        os: ["ubuntu-24.04", "ubuntu-22.04"]
+        perl:
+          - "5.44"
+          - "5.42"
+          - "5.40"
+          - "5.38"
+          - "5.36"
+          - "5.34"
+          - "5.32"
+          - "5.30"
+          - "5.28"
+          - "5.26"
+          - "5.24"
+          - "5.22"
+          - "5.20"
+          - "5.18"
+          - "5.16"
+          - "5.14"
+          - "5.12"
+          - "5.10"
+
     name: Perl ${{ matrix.perl }} on ${{ matrix.os }}
 
     steps:
@@ -20,18 +44,100 @@ jobs:
         with:
           perl-version: ${{ matrix.perl }}
 
-      - run: perl -V
-      - run: perl -v
+      - name: Report Perl and compiler configuration
+        shell: bash
+        run: |
+          perl -V
+          perl -MConfig -E 'say "Config cc=$Config::Config{cc}"; say "Config gccversion=$Config::Config{gccversion}"'
+          command -v gcc >/dev/null 2>&1 && gcc --version || true
 
-      - name: Install Required Perl Modules
+      - name: Install required Perl modules
+        shell: bash
         run: |
           cpanm --verbose --notest Module::Build Inline::C Alien::OpenMP \
                 Util::H2O::More File::Temp Test::Exception \
                 OpenMP::Environment File::ShareDir
-          
-          # Conditionally install Test::Deep if Perl version >= 5.12
-          perl -e 'exit 1 if $] < 5.012' && cpanm --verbose --notest Test::Deep || echo "Skipping Test::Deep for Perl < 5.12"
 
-      - name: Run Tests
-        run: ./test-runner.sh
-        if: always()  # Ensures tests run even if a previous step failed
+          # Test::Deep no longer supports every Perl version that this
+          # distribution intentionally probes.
+          if perl -e 'exit($] < 5.012 ? 1 : 0)'; then
+            cpanm --verbose --notest Test::Deep
+          else
+            echo "Skipping Test::Deep for Perl < 5.12"
+          fi
+
+      - name: Report OpenMP dependency versions
+        shell: bash
+        run: |
+          perl -MAlien::OpenMP -E 'say "Alien::OpenMP=$Alien::OpenMP::VERSION"; say "cflags=".Alien::OpenMP->cflags; say "libs=".Alien::OpenMP->libs'
+          perl -MOpenMP::Environment -E 'say "OpenMP::Environment=$OpenMP::Environment::VERSION"'
+
+      - name: Run tests
+        run: perl ./test-runner.pl
+  strawberry:
+    name: Strawberry Perl on Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Strawberry Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          distribution: strawberry
+
+      - name: Show Perl configuration
+        run: perl -V
+
+      - name: Install required Perl modules
+        uses: perl-actions/install-with-cpanm@v1
+        with:
+          args: >-
+            -n
+            Module::Build
+            Inline::C
+            Alien::OpenMP
+            Util::H2O::More
+            File::Temp
+            Test::Exception
+            Test::Deep
+            OpenMP::Environment
+            File::ShareDir
+
+      - name: Run tests
+        run: perl ./test-runner.pl
+
+
+  macos-clang:
+    name: Perl with Apple Clang/OpenMP on macOS
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Perl and OpenMP runtime
+        run: brew install perl libomp
+
+      - name: Show compiler and Perl configuration
+        run: |
+          clang --version
+          perl -V
+
+      - name: Install required Perl modules
+        uses: perl-actions/install-with-cpanm@v1
+        with:
+          args: >-
+            -n
+            Module::Build
+            Inline::C
+            Alien::OpenMP
+            Util::H2O::More
+            File::Temp
+            Test::Exception
+            Test::Deep
+            OpenMP::Environment
+            File::ShareDir
+          sudo: false
+
+      - name: Run tests
+        run: perl ./test-runner.pl

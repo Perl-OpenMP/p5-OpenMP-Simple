@@ -3,7 +3,9 @@ use warnings;
 
 use OpenMP::Simple;
 use OpenMP::Environment;
-use Test::More tests => 8;
+use Test::More;
+use lib 't/lib';
+use OpenMP::Simple::TestCompat qw/default_device_values/;
 
 use Inline (
     C    => 'DATA',
@@ -11,24 +13,28 @@ use Inline (
 );
 
 my $env = OpenMP::Environment->new;
+my @devices = default_device_values(_get_num_devices(), 8);
+
+plan tests => scalar @devices;
 
 note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE'};
-for my $default_device ( 1 .. 8 ) {
+for my $default_device (@devices) {
     my $current_value = $env->omp_default_device($default_device);
-    is _get_default_device(), $default_device, sprintf qq{The number of threads (%0d) spawned in the OpenMP runtime via OMP_DEFAULT_DEVICE, as expected}, $default_device;
+    is _get_default_device(), $default_device,
+      sprintf qq{Default device (%0d) is reflected by the OpenMP runtime, as expected},
+        $default_device;
 }
 
 __DATA__
 __C__
+int _get_num_devices() {
+  return omp_get_num_devices();
+}
+
 int _get_default_device() {
+  /* default-device-var is bound to the generating task. */
   PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE
-  int ret = 0;
-  #pragma omp parallel
-  {
-    #pragma omp single
-    ret = omp_get_default_device();
-  }
-  return ret;
+  return omp_get_default_device();
 }
 
 __END__

@@ -48,52 +48,75 @@ All setters EXCEPT the LOCK routines,
     }
 
 #define PerlOMP_UPDATE_WITH_ENV__DYNAMIC                    \
-    char *VALUE1 = getenv("OMP_DYNAMIC");                   \
-    if (VALUE1 == NULL) {                                   \
-      omp_set_dynamic(VALUE1);                              \
-    }                                                       \
-    else if (strcmp(VALUE1,"TRUE") || strcmp(VALUE1,"true") || strcmp(VALUE1,"1")) { \
-      omp_set_dynamic(1);                                   \
-    }                                                       \
-    else {                                                  \
-      omp_set_dynamic(NULL);                                \
+    {                                                       \
+      const char *PerlOMP_dynamic = getenv("OMP_DYNAMIC"); \
+      if (PerlOMP_dynamic == NULL) {                        \
+        omp_set_dynamic(0);                                 \
+      }                                                     \
+      else if (strcmp(PerlOMP_dynamic,"TRUE") == 0 ||      \
+               strcmp(PerlOMP_dynamic,"true") == 0 ||      \
+               strcmp(PerlOMP_dynamic,"1") == 0) {         \
+        omp_set_dynamic(1);                                 \
+      }                                                     \
+      else {                                                \
+        omp_set_dynamic(0);                                 \
+      }                                                     \
     }
 
 #define PerlOMP_UPDATE_WITH_ENV__NESTED                     \
-    char *VALUE = getenv("OMP_NESTED");                     \
-    if (VALUE == NULL) {                                    \
-      omp_set_nested(VALUE);                                \
-    }                                                       \
-    else if (strcmp(VALUE,"TRUE") || strcmp(VALUE,"true") || strcmp(VALUE,"1")) { \
-      omp_set_nested(1);                                    \
-    }                                                       \
-    else {                                                  \
-      omp_set_nested(NULL);                                 \
-    };
+    {                                                       \
+      const char *PerlOMP_nested = getenv("OMP_NESTED");   \
+      if (PerlOMP_nested == NULL) {                         \
+        omp_set_nested(0);                                  \
+      }                                                     \
+      else if (strcmp(PerlOMP_nested,"TRUE") == 0 ||       \
+               strcmp(PerlOMP_nested,"true") == 0 ||       \
+               strcmp(PerlOMP_nested,"1") == 0) {          \
+        omp_set_nested(1);                                  \
+      }                                                     \
+      else {                                                \
+        omp_set_nested(0);                                  \
+      }                                                     \
+    }
 
 #define PerlOMP_UPDATE_WITH_ENV__SCHEDULE                   \
-    char *str = getenv("OMP_SCHEDULE");                     \
-    if (str != NULL) {                                      \
-      omp_sched_t SCHEDULE = omp_sched_static;              \
-      int CHUNK = 1; char *pt;                              \
-      pt = strtok (str,",");                                \
-      if (strcmp(pt,"static")) {                            \
-        SCHEDULE = omp_sched_static;                        \
+    {                                                       \
+      const char *PerlOMP_schedule = getenv("OMP_SCHEDULE"); \
+      if (PerlOMP_schedule != NULL) {                       \
+        omp_sched_t PerlOMP_schedule_kind = omp_sched_static; \
+        const char *PerlOMP_chunk_text = NULL;              \
+        int PerlOMP_chunk = 1;                              \
+        int PerlOMP_schedule_valid = 1;                     \
+        if (strncmp(PerlOMP_schedule,"static",6) == 0 &&   \
+            (PerlOMP_schedule[6] == '\0' || PerlOMP_schedule[6] == ',')) { \
+          PerlOMP_schedule_kind = omp_sched_static;         \
+          PerlOMP_chunk_text = PerlOMP_schedule[6] == ',' ? PerlOMP_schedule + 7 : NULL; \
+        }                                                   \
+        else if (strncmp(PerlOMP_schedule,"dynamic",7) == 0 && \
+                 (PerlOMP_schedule[7] == '\0' || PerlOMP_schedule[7] == ',')) { \
+          PerlOMP_schedule_kind = omp_sched_dynamic;        \
+          PerlOMP_chunk_text = PerlOMP_schedule[7] == ',' ? PerlOMP_schedule + 8 : NULL; \
+        }                                                   \
+        else if (strncmp(PerlOMP_schedule,"guided",6) == 0 && \
+                 (PerlOMP_schedule[6] == '\0' || PerlOMP_schedule[6] == ',')) { \
+          PerlOMP_schedule_kind = omp_sched_guided;         \
+          PerlOMP_chunk_text = PerlOMP_schedule[6] == ',' ? PerlOMP_schedule + 7 : NULL; \
+        }                                                   \
+        else if (strncmp(PerlOMP_schedule,"auto",4) == 0 && \
+                 (PerlOMP_schedule[4] == '\0' || PerlOMP_schedule[4] == ',')) { \
+          PerlOMP_schedule_kind = omp_sched_auto;           \
+          PerlOMP_chunk_text = PerlOMP_schedule[4] == ',' ? PerlOMP_schedule + 5 : NULL; \
+        }                                                   \
+        else {                                              \
+          PerlOMP_schedule_valid = 0;                       \
+        }                                                   \
+        if (PerlOMP_chunk_text != NULL && *PerlOMP_chunk_text != '\0') { \
+          PerlOMP_chunk = atoi(PerlOMP_chunk_text);         \
+        }                                                   \
+        if (PerlOMP_schedule_valid) {                       \
+          omp_set_schedule(PerlOMP_schedule_kind, PerlOMP_chunk); \
+        }                                                   \
       }                                                     \
-      else if (strcmp(pt,"dynamic")) {                      \
-        SCHEDULE = omp_sched_dynamic;                       \
-      }                                                     \
-      else if (strcmp(pt,"guided")) {                       \
-        SCHEDULE = omp_sched_guided;                        \
-      }                                                     \
-      else if (strcmp(pt,"auto")) {                         \
-        SCHEDULE = omp_sched_auto;                          \
-      }                                                     \
-      pt = strtok (NULL, ",");                              \
-      if (pt != NULL) {                                     \
-        CHUNK = atoi(pt);                                   \
-      }                                                     \
-      omp_set_schedule(SCHEDULE, CHUNK);                    \
     }
 
 /* bundled Macros */
@@ -180,36 +203,90 @@ void PerlOMP_1D_Array_TO_1D_INT_ARRAY_r(SV *AVref, int numElements, int retArray
  *
  * into a C array of strings (char*), so it can be used in OpenMP or C code.
  */
-    
+
 void PerlOMP_1D_Array_TO_1D_STRING_ARRAY(SV *AVref, int numElements, char *retArray[numElements]) {
   AV *array = (AV*)SvRV(AVref);
   SV **element;
+
   for (int i = 0; i < numElements; i++) {
+    STRLEN length;
+    const char *source;
+
     element = av_fetch(array, i, 0);
-    if (!element || !*element || !SvOK(*element))
+    if (!element || !*element || !SvOK(*element)) {
+      for (int j = 0; j < i; j++)
+        free(retArray[j]);
       croak("Expected value at array[%d]", i);
-    
-    retArray[i] = strdup(SvPV_nolen(*element)); // Allocate and copy string
-    if (!retArray[i])
+    }
+
+    source = SvPV(*element, length);
+    retArray[i] = (char *)malloc((size_t)length + 1);
+    if (!retArray[i]) {
+      for (int j = 0; j < i; j++)
+        free(retArray[j]);
       croak("Memory allocation failed for array[%d]", i);
+    }
+
+    memcpy(retArray[i], source, (size_t)length);
+    retArray[i][length] = '\0';
   }
-} 
-  
-/* Threaded version */
+}
+
+/*
+ * Threaded version.
+ *
+ * Perl API access and allocation stay on the calling Perl thread. OpenMP
+ * workers only copy bytes between native buffers. This avoids crossing Perl
+ * allocator/interpreter ownership boundaries on runtimes such as Strawberry
+ * Perl while keeping the caller-facing API unchanged.
+ */
 void PerlOMP_1D_Array_TO_1D_STRING_ARRAY_r(SV *AVref, int numElements, char *retArray[numElements]) {
   AV *array = (AV*)SvRV(AVref);
-  SV **element;
+  const char **source = NULL;
+  STRLEN *length = NULL;
+
   PerlOMP_GETENV_BASIC
+
+  if (numElements > 0) {
+    source = (const char **)malloc((size_t)numElements * sizeof(*source));
+    length = (STRLEN *)malloc((size_t)numElements * sizeof(*length));
+    if (!source || !length) {
+      free(source);
+      free(length);
+      croak("Memory allocation failed while staging string array");
+    }
+  }
+
+  for (int i = 0; i < numElements; i++) {
+    SV **element = av_fetch(array, i, 0);
+
+    if (!element || !*element || !SvOK(*element)) {
+      for (int j = 0; j < i; j++)
+        free(retArray[j]);
+      free(source);
+      free(length);
+      croak("Expected value at array[%d]", i);
+    }
+
+    source[i] = SvPV(*element, length[i]);
+    retArray[i] = (char *)malloc((size_t)length[i] + 1);
+    if (!retArray[i]) {
+      for (int j = 0; j < i; j++)
+        free(retArray[j]);
+      free(source);
+      free(length);
+      croak("Memory allocation failed for array[%d]", i);
+    }
+  }
+
   #pragma omp parallel for
   for (int i = 0; i < numElements; i++) {
-    element = av_fetch(array, i, 0);
-    if (!element || !*element || !SvOK(*element))
-      croak("Expected value at array[%d]", i);
-
-    retArray[i] = strdup(SvPV_nolen(*element)); // Allocate and copy string
-    if (!retArray[i])
-      croak("Memory allocation failed for array[%d]", i);
+    memcpy(retArray[i], source[i], (size_t)length[i]);
+    retArray[i][length[i]] = '\0';
   }
+
+  free(source);
+  free(length);
 }
 
 /* 2D AoA to 2D float C array ...
@@ -312,55 +389,124 @@ void PerlOMP_2D_AoA_TO_2D_INT_ARRAY_r(SV *AoA, int numRows, int rowSize, int ret
  *
  *   my $AoA = [ [qw/hello world/], [qw/foo bar/], [qw/baz qux/] ];
  *
- * into a C array of the same dimensions (char*[][]) so it can be used with OpenMP
+ * into a C array of strings (char*[][]) so it can be used with OpenMP
  * "#pragma omp for" work-sharing construct.
  */
 
 void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY(SV *AoA, int numRows, int rowSize, char *retArray[numRows][rowSize]) {
   SV **AVref;
+
   if (!SvROK(AoA) || SvTYPE(SvRV(AoA)) != SVt_PVAV)
     croak("Expected Arrayref");
-  
+
   for (int i = 0; i < numRows; i++) {
     AVref = av_fetch((AV*)SvRV(AoA), i, 0);
-    if (!AVref || !*AVref || !SvROK(*AVref) || SvTYPE(SvRV(*AVref)) != SVt_PVAV)
+    if (!AVref || !*AVref || !SvROK(*AVref) || SvTYPE(SvRV(*AVref)) != SVt_PVAV) {
+      for (size_t k = 0; k < (size_t)i * (size_t)rowSize; k++)
+        free(retArray[k / (size_t)rowSize][k % (size_t)rowSize]);
       croak("Expected arrayref at array[%d]", i);
+    }
 
     for (int j = 0; j < rowSize; j++) {
+      size_t index = (size_t)i * (size_t)rowSize + (size_t)j;
+      STRLEN length;
+      const char *source;
       SV **element = av_fetch((AV*)SvRV(*AVref), j, 0);
-      if (!element || !*element || !SvOK(*element))
-        croak("Expected value at array[%d][%d]", i, j);
 
-      retArray[i][j] = strdup(SvPV_nolen(*element)); // Allocate and copy string
-      if (!retArray[i][j])
+      if (!element || !*element || !SvOK(*element)) {
+        for (size_t k = 0; k < index; k++)
+          free(retArray[k / (size_t)rowSize][k % (size_t)rowSize]);
+        croak("Expected value at array[%d][%d]", i, j);
+      }
+
+      source = SvPV(*element, length);
+      retArray[i][j] = (char *)malloc((size_t)length + 1);
+      if (!retArray[i][j]) {
+        for (size_t k = 0; k < index; k++)
+          free(retArray[k / (size_t)rowSize][k % (size_t)rowSize]);
         croak("Memory allocation failed for array[%d][%d]", i, j);
+      }
+
+      memcpy(retArray[i][j], source, (size_t)length);
+      retArray[i][j][length] = '\0';
     }
   }
 }
 
-/* Threaded version using OpenMP */
+/*
+ * Threaded version using OpenMP.
+ *
+ * As with the 1D variant, Perl API access and allocation happen only on the
+ * calling Perl thread. Worker threads operate exclusively on native buffers.
+ */
 void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY_r(SV *AoA, int numRows, int rowSize, char *retArray[numRows][rowSize]) {
-  SV **AVref;
+  size_t count;
+  const char **source = NULL;
+  STRLEN *length = NULL;
+
   if (!SvROK(AoA) || SvTYPE(SvRV(AoA)) != SVt_PVAV)
     croak("Expected Arrayref");
-  
+
   PerlOMP_GETENV_BASIC
-  #pragma omp parallel for private(AVref)
-  for (int i = 0; i < numRows; i++) {
-    AVref = av_fetch((AV*)SvRV(AoA), i, 0);
-    if (!AVref || !*AVref || !SvROK(*AVref) || SvTYPE(SvRV(*AVref)) != SVt_PVAV)
-      croak("Expected arrayref at array[%d]", i);
 
-    for (int j = 0; j < rowSize; j++) {
-      SV **element = av_fetch((AV*)SvRV(*AVref), j, 0);
-      if (!element || !*element || !SvOK(*element))
-        croak("Expected value at array[%d][%d]", i, j);
-
-      retArray[i][j] = strdup(SvPV_nolen(*element)); // Allocate and copy string
-      if (!retArray[i][j])
-        croak("Memory allocation failed for array[%d][%d]", i, j);
+  count = (size_t)numRows * (size_t)rowSize;
+  if (count > 0) {
+    source = (const char **)malloc(count * sizeof(*source));
+    length = (STRLEN *)malloc(count * sizeof(*length));
+    if (!source || !length) {
+      free(source);
+      free(length);
+      croak("Memory allocation failed while staging 2D string array");
     }
   }
+
+  for (int i = 0; i < numRows; i++) {
+    SV **AVref = av_fetch((AV*)SvRV(AoA), i, 0);
+
+    if (!AVref || !*AVref || !SvROK(*AVref) || SvTYPE(SvRV(*AVref)) != SVt_PVAV) {
+      size_t allocated = (size_t)i * (size_t)rowSize;
+      for (size_t k = 0; k < allocated; k++)
+        free(retArray[k / (size_t)rowSize][k % (size_t)rowSize]);
+      free(source);
+      free(length);
+      croak("Expected arrayref at array[%d]", i);
+    }
+
+    for (int j = 0; j < rowSize; j++) {
+      size_t index = (size_t)i * (size_t)rowSize + (size_t)j;
+      SV **element = av_fetch((AV*)SvRV(*AVref), j, 0);
+
+      if (!element || !*element || !SvOK(*element)) {
+        for (size_t k = 0; k < index; k++)
+          free(retArray[k / (size_t)rowSize][k % (size_t)rowSize]);
+        free(source);
+        free(length);
+        croak("Expected value at array[%d][%d]", i, j);
+      }
+
+      source[index] = SvPV(*element, length[index]);
+      retArray[i][j] = (char *)malloc((size_t)length[index] + 1);
+      if (!retArray[i][j]) {
+        for (size_t k = 0; k < index; k++)
+          free(retArray[k / (size_t)rowSize][k % (size_t)rowSize]);
+        free(source);
+        free(length);
+        croak("Memory allocation failed for array[%d][%d]", i, j);
+      }
+    }
+  }
+
+  #pragma omp parallel for collapse(2)
+  for (int i = 0; i < numRows; i++) {
+    for (int j = 0; j < rowSize; j++) {
+      size_t index = (size_t)i * (size_t)rowSize + (size_t)j;
+      memcpy(retArray[i][j], source[index], (size_t)length[index]);
+      retArray[i][j][length[index]] = '\0';
+    }
+  }
+
+  free(source);
+  free(length);
 }
 
 /* Datastructure Introspection Functions*/
@@ -528,4 +674,3 @@ void verify_2D_array_type(SV *AoA, bool (*type_check)(SV *), const char *type_na
 void PerlOMP_VERIFY_2D_FLOAT_ARRAY(SV *AoA) { verify_2D_array_type(AoA, is_float, "float"); }
 void PerlOMP_VERIFY_2D_INT_ARRAY(SV *AoA) { verify_2D_array_type(AoA, is_int, "integer"); }
 void PerlOMP_VERIFY_2D_STRING_ARRAY(SV *AoA) { verify_2D_array_type(AoA, is_string, "string"); }
-

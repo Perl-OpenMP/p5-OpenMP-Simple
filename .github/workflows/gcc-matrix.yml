@@ -1,0 +1,100 @@
+name: GCC / OpenMP runtime matrix
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gcc:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gcc_version: "12.5.0"
+            image: "gcc:12.5.0-bookworm"
+          - gcc_version: "13.4.0"
+            image: "gcc:13.4.0-bookworm"
+          - gcc_version: "14.4.0"
+            image: "gcc:14.4.0-trixie"
+          - gcc_version: "15.3.0"
+            image: "gcc:15.3.0-trixie"
+          - gcc_version: "16.2.0"
+            image: "gcc:16.2.0-trixie"
+
+    name: Perl 5.44.0 built with GCC ${{ matrix.gcc_version }}
+
+    # Alien::OpenMP intentionally keys off the compiler used to build Perl.
+    # Using the official GCC images and building Perl inside each one tests
+    # that exact compiler/runtime pairing rather than swapping gcc underneath
+    # a prebuilt Perl.
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - name: Check out OpenMP::Simple
+        uses: actions/checkout@v4
+
+      - name: Check out OpenMP::Environment master
+        uses: actions/checkout@v4
+        with:
+          repository: Perl-OpenMP/p5-OpenMP-Environment
+          ref: master
+          path: .ci/OpenMP-Environment
+
+      - name: Build Perl and run the OpenMP::Simple suite
+        shell: bash
+        env:
+          PERLBREW_ROOT: /opt/perlbrew
+          PERLBREW_HOME: /opt/perlbrew
+          PERL_VERSION: "5.44.0"
+        run: |
+          set -euxo pipefail
+
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git make patch perl xz-utils
+          rm -rf /var/lib/apt/lists/*
+
+          echo "Container compiler:"
+          gcc --version
+          g++ --version
+
+          curl -L https://install.perlbrew.pl | bash
+          export PATH="$PERLBREW_ROOT/bin:$PATH"
+          perlbrew init
+          # shellcheck disable=SC1091
+          source "$PERLBREW_ROOT/etc/bashrc"
+
+          # This is the critical part of this workflow: Config{cc} and
+          # Config{gccversion} must describe the GCC version being tested.
+          perlbrew --verbose --notest install "perl-$PERL_VERSION" -Dcc=gcc -Dld=gcc
+          perlbrew use "perl-$PERL_VERSION"
+          perlbrew install-cpanm
+
+          perl -V
+          perl -MConfig -E '
+            say "Config cc=$Config::Config{cc}";
+            say "Config ld=$Config::Config{ld}";
+            say "Config gccversion=$Config::Config{gccversion}";
+          '
+
+          cpanm --verbose --notest Module::Build Inline::C Alien::OpenMP \
+                Util::H2O::More File::Temp Test::Exception File::ShareDir \
+                Dispatch::Fu Validate::Tiny Util::H2O Test::Deep
+
+          export PERL5LIB="$GITHUB_WORKSPACE/.ci/OpenMP-Environment/lib"
+
+          perl -MAlien::OpenMP -E '
+            say "Alien::OpenMP=$Alien::OpenMP::VERSION";
+            say "OpenMP macro=".Alien::OpenMP->openmp_version;
+            say "cflags=".Alien::OpenMP->cflags;
+            say "libs=".Alien::OpenMP->libs;
+          '
+          perl -MOpenMP::Environment -E '
+            say "OpenMP::Environment=$OpenMP::Environment::VERSION";
+            say "loaded from $INC{q{OpenMP/Environment.pm}}";
+          '
+
+          perl ./test-runner.pl

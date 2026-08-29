@@ -3,7 +3,7 @@ use warnings;
 
 use OpenMP::Simple;
 use OpenMP::Environment;
-use Test::More tests => 6;
+use Test::More tests => 7;
 
 use Inline (
     C    => 'DATA',
@@ -32,11 +32,14 @@ is _get_dynamic(), 1, sprintf qq{OMP_DYNAMIC is set as 'TRUE', is 1 (on), as exp
 $env->omp_dynamic('FALSE');
 is _get_dynamic(), 0, sprintf qq{OMP_DYNAMIC is set as 'FALSE', is 0 (off), as expected};
 
+delete $ENV{OMP_DYNAMIC};
+is _get_dynamic(), 0, q{Missing OMP_DYNAMIC preserves the macro's historical disabled default};
+
 __DATA__
 __C__
 int _get_dynamic() {
-  PerlOMP_UPDATE_WITH_ENV__DYNAMIC
   int ret = 0;
+  PerlOMP_UPDATE_WITH_ENV__DYNAMIC
   #pragma omp parallel
   {
     #pragma omp single

@@ -115,3 +115,21 @@
       - module is tested down to 5.10.1 (cpanm --notest), though some
         prereqs may technically have higher perl requirments, please
         let oodler@cpan.org know if this causes problems for you
+
+0.2.7
+    - expanded CI and portability testing across Perl 5.10.1–5.44.0 on Ubuntu 
+      22.04/24.04, macOS with Perl 5.42.2, Apple Clang 21.0.0 and libomp 22.1.8,
+      and Windows with Strawberry Perl 5.42.2.1/GCC 13.2.0, plus dedicated Perl 5.44.0
+      builds against GCC 12.5.0, 13.4.0, 14.4.0, 15.3.0, and 16.2.0
+    - corrected OMP_SCHEDULE parsing and stopped modifying OMP_SCHEDULE
+      while applying it to the OpenMP runtime
+    - corrected OMP_DYNAMIC and OMP_NESTED handling, including invalid
+      pointer-to-integer calls previously tolerated by some compilers
+    - made threaded string conversion helpers avoid Perl API and allocator
+      access from OpenMP worker threads
+    - made OMP_DEFAULT_DEVICE tests respect the target devices actually
+      available from the OpenMP runtime
+    - centralized platform/runtime-specific test accommodations for easier
+      maintenance
+    - expanded CI coverage across Perl versions, GCC versions, Strawberry
+      Perl, and Apple Clang/libomp

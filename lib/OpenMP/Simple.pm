@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Alien::OpenMP;
 
-our $VERSION = q{0.2.6};
+our $VERSION = q{0.2.7};
 
 # This module is a wrapper around a ".h" file that is injected into Alien::OpenMP
 # via Inline:C's AUTO_INCLUDE feature. This header file constains C macros for reading
@@ -26,840 +26,712 @@ sub Inline {
 1;
 
 __END__
-
 =head1 NAME
 
-OpenMP::Simple - Wrapper around C<Alien::OpenMP> that provides helpful C macros and
-runtime C functions
+OpenMP::Simple - Inline::C support for using OpenMP from Perl
 
 =head1 SYNOPSIS
 
+=head2 Using OpenMP::Environment
+
   use strict;
   use warnings;
-  
+
   use OpenMP::Simple;
   use OpenMP::Environment;
-  
+
   use Inline (
       C    => 'DATA',
       with => qw/OpenMP::Simple/,
   );
-  
+
   my $env = OpenMP::Environment->new;
-  
-  for my $want_num_threads ( 1 .. 8 ) {
-      $env->omp_num_threads($want_num_threads);
+  $env->omp_num_threads(4);
+  $env->omp_schedule('dynamic,4');
 
-      $env->assert_omp_environment; # (optional) validates %ENV
+  # Optional: validate the OpenMP environment before entering C.
+  $env->assert_omp_environment;
 
-      # call parallelized C function
-      my $got_num_threads = _check_num_threads();
+  print "threads = ", _openmp_threads(), "\n";
 
-      printf "%0d threads spawned in ".
-              "the OpenMP runtime, expecting %0d\n",
-                $got_num_threads, $want_num_threads;
-  }
-  
   __DATA__
   __C__
 
-  int _check_num_threads() {
+  int _openmp_threads() {
     PerlOMP_GETENV_BASIC
-    int ret = 0;
+
+    int threads = 0;
     #pragma omp parallel
     {
       #pragma omp single
-      ret = omp_get_num_threads();
+      threads = omp_get_num_threads();
     }
-    return ret;
+
+    return threads;
   }
 
-See the C<./t> directory for many more examples. It should be obvious,
-but C<Test::More> is not required; it's just for show and convenience here.
+=head2 Using C<%ENV> directly
+
+L<OpenMP::Environment> is convenient, but it is not required in order to use
+C<OpenMP::Simple>. The macros read the normal OpenMP environment variables
+from C<%ENV>.
+
+  use strict;
+  use warnings;
+
+  BEGIN {
+      $ENV{OMP_NUM_THREADS} = 4;
+      $ENV{OMP_SCHEDULE}    = 'guided,8';
+  }
+
+  use OpenMP::Simple;
+
+  use Inline (
+      C    => 'DATA',
+      with => qw/OpenMP::Simple/,
+  );
+
+  print "threads = ", _openmp_threads(), "\n";
+
+  __DATA__
+  __C__
+
+  int _openmp_threads() {
+    PerlOMP_GETENV_BASIC
+
+    int threads = 0;
+    #pragma omp parallel
+    {
+      #pragma omp single
+      threads = omp_get_num_threads();
+    }
+
+    return threads;
+  }
+
+=head2 Using OpenMP without the environment macros
+
+C<OpenMP::Simple> can also be used simply to obtain the OpenMP build and link
+configuration through L<Alien::OpenMP>. There is no requirement that a
+C<PerlOMP_*> environment macro be used.
+
+  use strict;
+  use warnings;
+
+  use OpenMP::Simple;
+
+  use Inline (
+      C    => 'DATA',
+      with => qw/OpenMP::Simple/,
+  );
+
+  print "maximum threads = ", _openmp_max_threads(), "\n";
+
+  __DATA__
+  __C__
+
+  int _openmp_max_threads() {
+    return omp_get_max_threads();
+  }
 
 =head1 DESCRIPTION
 
-This module is a wrapper that provides a custom ".h" file, which is injected
-into L<Alien::OpenMP> via C<Inline:C>'s C<AUTO_INCLUDE> hook. This header
-file constains C macros for reading OpenMP relavent environmental variables
-via C<%ENV> (set preferably using L<OpenMP::Environment>) and by calling
-the standard OpenMP runtime functions to set them (e.g., C<OMP_NUM_THREADS>
-/ C<set_omp_num_threads>).
+C<OpenMP::Simple> is a small L<Inline::C> configuration wrapper around
+L<Alien::OpenMP>. It supplies the compiler and linker configuration discovered
+by C<Alien::OpenMP> and automatically includes the C<openmp-simple.h> header
+shipped with this distribution.
 
-C<OpenMP::Simple> is meant to work directly with C<OpenMP::Environment>
-in a way that provides the same runtime control experience that OpenMP's
-environmental variables provides.
+The header provides convenience macros and helper functions for common
+Perl/OpenMP tasks. The most commonly used macros read standard OpenMP
+variables from C<%ENV> and apply those values to the current OpenMP runtime by
+calling the corresponding OpenMP runtime functions.
 
-The most common use case is updating the number of OpenMP threads that are
-defined via C<OMP_NUM_THREADS>.
+L<OpenMP::Environment> is the recommended interface for managing OpenMP
+environment variables from Perl because it provides a consistent API and can
+validate values. It is not, however, required by C<OpenMP::Simple>. Setting
+C<%ENV> directly is supported, and C<OpenMP::Simple> may also be used without
+any environment-update macros at all.
 
-=head2 Experimental Parts
+=head2 Runtime environment and process startup
 
-There is some attempt at helping to deal with getting data structures
-that are very common in the computational domains into and out of these
-C<Inline::C>'d routines that are parallized via OpenMP. We are currently
-investigating what is actually needed in this regard. It is possible that a lot
-of this is unnecessariy and it is likely that a large number of C<read-only>
-scenerios involving Perl internal data structures and OpenMP threads are
-actually I<thread-safe>. This does not address the potential knowledge gap
-for those who are more experienced with C<C> and OpenMP than they are with
-the Perl C API for accessing internal Perl data structures inside of C code.
+Not every OpenMP environment variable has a corresponding runtime setter.
+Variables such as C<OMP_NUM_THREADS> and C<OMP_SCHEDULE> can be read by
+C<OpenMP::Simple> and applied with OpenMP runtime functions. Other variables,
+such as C<OMP_CANCELLATION>, may be consumed by the OpenMP runtime when the
+runtime is initialized and therefore may need to be present in the environment
+before the Inline::C shared library is loaded.
 
-As time advances, the chances that these change will get smaller; but that's
-not to say breaking changes will not get introduced. But changes introduced
-will be for correctness or reducing the number of parameters that developers
-are expected to provide.
+When an OpenMP setting must exist before runtime initialization, set it in a
+C<BEGIN> block or otherwise arrange for it to be present in the process
+environment before OpenMP code is loaded.
 
-=head1 SEE TESTS FOR CODE EXAMPLES
+=head2 Experimental data conversion helpers
 
-The tests that are distributed with this module are an excellent source to
-examine for example uses.
+The array conversion and verification helpers are intended to make common
+Perl-to-C data handling less repetitive. They remain more experimental than
+the environment-update macros.
+
+Perl API access from arbitrary OpenMP worker threads should not be assumed to
+be safe. Where practical, stage Perl data on the Perl/caller thread and do only
+native C work inside OpenMP worker threads. The string conversion helpers have
+been hardened in this direction. The C<_r> numeric conversion helpers should
+still be regarded as experimental when portability across Perl builds and
+threading models is important.
+
+=head1 OpenMP::Environment
+
+L<OpenMP::Environment> and C<OpenMP::Simple> are designed to work together,
+but they have separate responsibilities.
+
+C<OpenMP::Environment> manages and validates the Perl process environment.
+C<OpenMP::Simple> makes those environment values useful inside Inline::C code
+by applying them to the active OpenMP runtime.
+
+For example:
+
+  my $env = OpenMP::Environment->new;
+
+  $env->omp_num_threads(8);
+  $env->omp_dynamic('FALSE');
+  $env->omp_schedule('static,16');
+
+  $env->assert_omp_environment;
+
+and then in C:
+
+  void apply_openmp_environment() {
+    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
+    PerlOMP_UPDATE_WITH_ENV__DYNAMIC
+    PerlOMP_UPDATE_WITH_ENV__SCHEDULE
+  }
+
+The equivalent can be done without C<OpenMP::Environment>:
+
+  $ENV{OMP_NUM_THREADS} = 8;
+  $ENV{OMP_DYNAMIC}     = 'FALSE';
+  $ENV{OMP_SCHEDULE}    = 'static,16';
+
+The C code is unchanged because the macros read the process environment, not
+the Perl object that was used to create it.
+
+=head1 PORTABILITY AND TESTED PLATFORMS
+
+=head2 Tested configurations
+
+The continuous-integration matrix documents configurations that are actively
+tested. It is not intended to define the complete set of platforms on which
+C<OpenMP::Simple> can run.
+
+Current testing includes:
+
+=over 4
+
+=item *
+
+Perl 5.10 through Perl 5.44 on Ubuntu 22.04 and Ubuntu 24.04.
+
+=item *
+
+Perl 5.44.0 built specifically with GCC 12.5.0, 13.4.0, 14.4.0, 15.3.0,
+and 16.2.0.
+
+=item *
+
+macOS with Perl 5.42.2, Apple Clang 21.0.0, and libomp 22.1.8.
+
+=item *
+
+Windows with Strawberry Perl 5.42.2.1 and GCC 13.2.0.
+
+=back
+
+The dedicated GCC matrix builds Perl with each compiler being tested so that
+the compiler recorded in Perl's C<Config> is the same compiler used by
+L<Alien::OpenMP> and C<OpenMP::Simple>.
+
+=head2 Portability beyond the tested matrix
+
+C<OpenMP::Simple> itself contains very little platform-specific code. It relies
+on L<Alien::OpenMP> to provide the compiler and OpenMP runtime configuration
+required by L<Inline::C>. As a result, systems outside the tested matrix should
+generally work when the Perl installation, C compiler, and OpenMP runtime form
+a compatible toolchain.
+
+Older Linux distributions are expected to remain usable provided their Perl,
+compiler, C library, and OpenMP runtime satisfy the requirements of
+L<Alien::OpenMP> and the particular OpenMP runtime functions being used. The
+tested Ubuntu 22.04 and Ubuntu 24.04 systems should therefore be regarded as
+reference platforms rather than minimum supported operating-system versions.
+
+Likewise, GCC versions older than those in the dedicated GCC matrix may work.
+Most basic C<OpenMP::Simple> functionality uses long-established OpenMP
+runtime interfaces such as C<omp_set_num_threads>, C<omp_set_schedule>,
+C<omp_set_dynamic>, C<omp_set_nested>, C<omp_set_max_active_levels>, and
+C<omp_set_default_device>.
+
+Individual newer features may require a newer OpenMP implementation. In
+particular, C<omp_set_num_teams> and C<omp_set_teams_thread_limit> require the
+corresponding runtime support and should not be assumed to exist on older
+OpenMP runtimes.
+
+Other Unix-like systems, other Clang/libomp combinations, and other compatible
+OpenMP implementations may also work but are not currently part of the
+continuous-integration matrix. A platform should not be considered unsupported
+merely because its exact operating-system or compiler version does not appear
+in CI.
+
+The important portability constraint is the toolchain as a whole: the compiler
+and OpenMP runtime used by C<OpenMP::Simple> should be compatible with the
+compiler configuration of the Perl being used. L<Alien::OpenMP> is responsible
+for discovering and supplying that configuration.
+
+Accordingly:
+
+=over 4
+
+=item *
+
+Configurations in the CI matrix are actively tested.
+
+=item *
+
+Older operating systems are supported where the Perl, compiler, and OpenMP
+toolchain remains compatible.
+
+=item *
+
+Older compiler and OpenMP combinations may support the core API even when
+newer optional OpenMP runtime functions are unavailable.
+
+=item *
+
+Untested platforms using compatible Perl, C compiler, and OpenMP runtime
+combinations are expected to work, but should be regarded as unverified until
+exercised by CI or CPAN Testers.
+
+=back
 
 =head1 PROVIDED C MACROS
 
-=head2 Updating Runtime with Environmental Variables
+=head2 Updating the OpenMP runtime from C<%ENV>
 
-All macros have at least 1 test in the suite. Please look at these in the
-Github repository to get an idea of how to use C<OpenMP::Simple>'s macros
-with C<OpenMP::Environment>.
+The C<PerlOMP_UPDATE_WITH_ENV__*> macros read standard OpenMP environment
+variables and, where an OpenMP runtime setter exists, apply the value to the
+current runtime.
 
-=head3 C<PerlOMP_GETENV_BASIC>
+The variables can be set through L<OpenMP::Environment> or directly through
+C<%ENV>.
 
-Equivalent of using,
+=head2 C<PerlOMP_GETENV_BASIC>
+
+A convenience bundle equivalent to:
 
   PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
-  PerlOMP_UPDATE_WITH_ENV__NUM_SCHEDULE
+  PerlOMP_UPDATE_WITH_ENV__SCHEDULE
 
-The purpose of this bundled approach is to make it easier to get started
-quickly. This list may be updated between versions. This is the recommended
-one to use when starting with this module. See the L<SYNOPSIS> example.
+This is useful when a routine should honor the two most common per-call
+settings without spelling out both macros.
 
-=head3 C<PerlOMP_UPDATE_WITH_ENV__NUM_THREADS>
+=head2 C<PerlOMP_UPDATE_WITH_ENV__NUM_THREADS>
 
-Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_NUM_THREADS}>, which is meant to be managed with
-L<OpenMP::Environment>.
+Reads C<$ENV{OMP_NUM_THREADS}> and applies it with C<omp_set_num_threads>.
 
-=head3 C<PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE>
+With L<OpenMP::Environment>:
 
-Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_DEFAULT_DEVICE}>, which is meant to be managed with
-L<OpenMP::Environment>.
-
-  use strict;
-  use warnings;
-  
-  use OpenMP::Simple;
-  use OpenMP::Environment;
-  use Test::More tests => 8;
-  
-  use Inline (
-      C    => 'DATA',
-      with => qw/OpenMP::Simple/,
-  );
-  
   my $env = OpenMP::Environment->new;
-  
-  note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE'};
-  for my $default_device ( 1 .. 8 ) {
-      my $current_value = $env->omp_default_device($default_device);
-      is _get_default_device(), $default_device, sprintf qq{The number of threads (%0d) spawned in the OpenMP runtime via OMP_DEFAULT_DEVICE, as expected}, $default_device;
-  }
-  
-  __DATA__
-  __C__
-  int _get_default_device() {
-    PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE
-    int ret = 0;
+  $env->omp_num_threads(8);
+
+Without L<OpenMP::Environment>:
+
+  $ENV{OMP_NUM_THREADS} = 8;
+
+In either case:
+
+  int threads_in_team() {
+    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
+
+    int threads = 0;
     #pragma omp parallel
     {
       #pragma omp single
-      ret = omp_get_default_device();
+      threads = omp_get_num_threads();
     }
-    return ret;
+    return threads;
   }
-  
-  __END__
-  
-=head3 C<PerlOMP_UPDATE_WITH_ENV__MAX_ACTIVE_LEVELS>
 
-Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_MAX_ACTIVE_LEVELS}>, which is meant to be managed with L<OpenMP::Environment>.
+=head2 C<PerlOMP_UPDATE_WITH_ENV__SCHEDULE>
 
+Reads C<$ENV{OMP_SCHEDULE}> and applies it with C<omp_set_schedule>.
 
-=head3 C<PerlOMP_UPDATE_WITH_ENV__DYNAMIC>
+The current helper recognizes C<static>, C<dynamic>, C<guided>, and C<auto>,
+with an optional comma-separated chunk size where meaningful, for example:
 
-Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_DYNAMIC}>, which is meant to be managed with L<OpenMP::Environment>.
+  $ENV{OMP_SCHEDULE} = 'dynamic,4';
 
+or:
 
-=head3 C<PerlOMP_UPDATE_WITH_ENV__NESTED>
-
-Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_NESTED}>, which is meant to be managed with L<OpenMP::Environment>.
-
-=head3 C<PerlOMP_UPDATE_WITH_ENV__SCHEDULE>
-
-Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_SCHEDULE}>, which is meant to be managed with L<OpenMP::Environment>.
-
-  use strict;
-  use warnings;
-  
-  use OpenMP::Simple;
-  use OpenMP::Environment;
-  use Util::H2O::More qw/h2o/;
-  use Test::More;
-  
-  use Inline (
-      C                 => 'DATA',
-      with              => qw/OpenMP::Simple/,
-  );
-  
   my $env = OpenMP::Environment->new;
-  
-  note qq{Testing macro provided by OpenMP::Simple, 'PerlOMP_UPDATE_WITH_ENV__NUM_THREADS'};
-  
-  # generate schedule value look up
-  my $schedules = {};
-  foreach my $sched (qw/static dynamic guided auto/) {
-    $schedules->{$sched} = _omp_sched_t_to_int($sched);
-  }
-  h2o $schedules;
-  
-  foreach my $sched (qw/static dynamic guided auto/) {
-    foreach my $chunk (qw/1 10 100 1000 10000/) {
-      my $current_value = $env->omp_schedule(qq{$sched,$chunk});
-      note $current_value;
-      _set_schedule_with_macro();
-      my $set_schedule = _get_schedule();
-      is $set_schedule, $schedules->$sched, sprintf qq{Schedule '%s' set in the OpenMP runtime, as expected.}, $sched;
-      my $set_chunk = _get_chunk();
-      is $chunk, $set_chunk, sprintf qq{Chunk size '% 5d' set in the OpenMP runtime, as expected.}, $set_chunk;
-    }
-  }
-  
-  done_testing;
-  
-  __DATA__
-  __C__
-  void _set_schedule_with_macro() {
+  $env->omp_schedule('dynamic,4');
+
+A simple runtime check is:
+
+  int current_schedule_chunk() {
     PerlOMP_UPDATE_WITH_ENV__SCHEDULE
-  }
-  
-  int _get_schedule() {
-    omp_sched_t *sched;
-    int *chunk;
-    #pragma omp parallel
-    {
-      #pragma omp single
-      omp_get_schedule(&sched, &chunk);
-    }
-    return sched;
-  }
-  
-  int _get_chunk() {
-    omp_sched_t *sched;
-    int *chunk;
-    #pragma omp parallel
-    {
-      #pragma omp single
-      omp_get_schedule(&sched, &chunk);
-    }
+
+    omp_sched_t kind;
+    int chunk = 0;
+    omp_get_schedule(&kind, &chunk);
     return chunk;
   }
-  
-  int _omp_sched_t_to_int(char *schedule) {
-    int ret = -1;
-    #pragma omp parallel
-    {
-      #pragma omp single
-        if (strcmp(schedule,"static")) {
-          ret = omp_sched_static;
-        }
-        else if (strcmp(schedule,"dynamic")) {
-          ret = omp_sched_dynamic;
-        }
-        else if (strcmp(schedule,"guided")) {
-          ret = omp_sched_guided;
-        }
-        else if (strcmp(schedule,"auto")) {
-          ret = omp_sched_auto;
-        }
-    }
-    return ret;
-  }
-  
-  __END__
-  
-=head3 C<PerlOMP_UPDATE_WITH_ENV__TEAMS_THREAD_LIMIT>
 
-Updates the OpenMP runtime with the value of the environmental
-variable, C<$ENV{OMP_TEAMS_THREAD_LIMIT}>, which is meant to be managed with L<OpenMP::Environment>.
+The OpenMP runtime may normalize schedule details, especially for C<auto>, so
+code should not assume that every implementation reports an identical chunk
+value for every scheduling mode.
 
-Note: C<OMP_TEAMS_THREAD_LIMIT> is not supported until GCC 12.3.0
+=head2 C<PerlOMP_UPDATE_WITH_ENV__DYNAMIC>
 
-=head3 C<PerlOMP_UPDATE_WITH_ENV__NUM_TEAMS>
+Reads C<$ENV{OMP_DYNAMIC}> and applies it with C<omp_set_dynamic>. True values
+accepted by the helper include C<TRUE>, C<true>, and C<1>; other values disable
+dynamic adjustment.
 
-Updates the OpenMP runtime with the value of the environmental variable,
-C<$ENV{OMP_NUM_TEAMS}>, which is meant to be managed with L<OpenMP::Environment>.
+=head2 C<PerlOMP_UPDATE_WITH_ENV__NESTED>
 
-Note: C<OMP_NUM_TEAMS> is not supported until GCC 12.3.0
+Reads C<$ENV{OMP_NESTED}> and applies it with C<omp_set_nested>.
 
-=head3 C<PerlOMP_RET_ARRAY_REF_ret>
+C<omp_set_nested> is retained for compatibility with the existing
+C<OpenMP::Simple> API, although newer OpenMP specifications prefer controlling
+nested parallelism with active-level settings such as
+C<OMP_MAX_ACTIVE_LEVELS> and C<omp_set_max_active_levels>.
 
-(may not be needed) - creates a new C<AV*> and sets it I<mortal> (doesn't
-survive outside of the current scope). Used when wanting to return an array
-reference that's been populated via C<av_push>.
+=head2 C<PerlOMP_UPDATE_WITH_ENV__MAX_ACTIVE_LEVELS>
 
-  __DATA__
-  __C__
+Reads C<$ENV{OMP_MAX_ACTIVE_LEVELS}> and applies it with
+C<omp_set_max_active_levels>.
 
-  void some_inline_c_function (...
-    
-    ...
+=head2 C<PerlOMP_UPDATE_WITH_ENV__DEFAULT_DEVICE>
 
-    /* boilerplate - creates an array to return back to perl, named "ret" */
-    /* note, "ret" can contain anything, when added via "av_push"         */
+Reads C<$ENV{OMP_DEFAULT_DEVICE}> and applies it with
+C<omp_set_default_device>.
+
+Device numbers are runtime-dependent. A host-only OpenMP implementation may
+report zero target devices, so portable code should query
+C<omp_get_num_devices> before assuming that a particular target device number
+is valid.
+
+=head2 C<PerlOMP_UPDATE_WITH_ENV__NUM_TEAMS>
+
+Reads C<$ENV{OMP_NUM_TEAMS}> and applies it with C<omp_set_num_teams> when the
+OpenMP runtime provides that function.
+
+This is a newer OpenMP runtime interface than the core thread-management
+functions. Availability therefore depends on the compiler and OpenMP runtime
+being used.
+
+=head2 C<PerlOMP_UPDATE_WITH_ENV__TEAMS_THREAD_LIMIT>
+
+Reads C<$ENV{OMP_TEAMS_THREAD_LIMIT}> and applies it with
+C<omp_set_teams_thread_limit> when the OpenMP runtime provides that function.
+
+As with C<omp_set_num_teams>, availability depends on the OpenMP implementation
+and version.
+
+=head2 C<PerlOMP_RET_ARRAY_REF_ret>
+
+Creates a mortal Perl C<AV *> named C<ret>. It is a convenience helper for
+Inline::C routines that build and return an array reference.
+
+For example:
+
+  AV *values() {
     PerlOMP_RET_ARRAY_REF_ret
-    
-    ...
-    
-    for(int i=0; i<num_elements; i++) {
-      av_push(ret, newSVnv(sum[i]));
-    }
-     
-    // AV* 'ret' comes from "PerlOMP_RET_ARRAY_REF_ret" macro called above
+
+    av_push(ret, newSViv(10));
+    av_push(ret, newSViv(20));
+    av_push(ret, newSViv(30));
+
     return ret;
   }
 
 =head1 PROVIDED C FUNCTIONS FOR COUNTING PERL ARRAYS
 
-=head2 C<int PerlOMP_1D_Array_NUM_ELEMENTS (SV *AVref)>
+=head2 C<PerlOMP_1D_Array_NUM_ELEMENTS>
 
-Returns the integer count of number of elements in the array reference. The 
-function doesn't care what is in the elements.
+  int PerlOMP_1D_Array_NUM_ELEMENTS(SV *AVref);
 
-=head2 C<int PerlOMP_2D_AoA_NUM_ROWS(SV *AoAref)>
+Returns the number of elements in a one-dimensional Perl array reference.
 
-Returns the integer count of number of rows in a 2D array reference. The
-function doesn't care what the rows looks like or what is in them
+=head2 C<PerlOMP_2D_AoA_NUM_ROWS>
 
-=head2 C<int PerlOMP_2D_AoA_NUM_COLS(SV *AoAref)>
+  int PerlOMP_2D_AoA_NUM_ROWS(SV *AoAref);
 
-Returns the number of elements in the first row of the provided 2D array
-reference. It assumes all rows are the same. It doesn't verify the contents
-of each row.
+Returns the number of rows in a two-dimensional Perl array-of-arrays.
 
-=head2 Examples
+=head2 C<PerlOMP_2D_AoA_NUM_COLS>
 
-  #!/usr/bin/env perl
-  
-  use warnings;
+  int PerlOMP_2D_AoA_NUM_COLS(SV *AoAref);
+
+Returns the number of elements in the first row of a two-dimensional Perl
+array-of-arrays. It assumes that the caller intends the rows to have a common
+shape; it does not verify every row length.
+
+=head2 Example
+
+These helpers do not require L<OpenMP::Environment>:
+
   use strict;
-  
-  use Test::More;
-  use Test::Deep;
-  
-  # build and load subroutines
+  use warnings;
+
   use OpenMP::Simple;
-  use OpenMP::Environment;
-  
+
   use Inline (
-      C                 => 'DATA',
-      with              => qw/OpenMP::Simple/,
+      C    => 'DATA',
+      with => qw/OpenMP::Simple/,
   );
-  
-  my $env = OpenMP::Environment->new();
-  
-  my $aref_orig = [
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
-    [ 1 .. 25 ],
+
+  my $matrix = [
+      [ 1, 2, 3 ],
+      [ 4, 5, 6 ],
   ];
-  
-  my $expected = [qw/1 2 3 4 5 6 7 8 9 10/];
-  
-  foreach my $thread_count (qw/1 4 8/) {
-    $env->omp_num_threads($thread_count);
-    my $ele_count = omp_elements_count($aref_orig);
-    is $ele_count, scalar @$aref_orig;
-  
-    my $row_count = omp_elements_row_count($aref_orig);
-    is $row_count, scalar @$aref_orig;
-  
-    my $col_count = omp_elements_col_count($aref_orig);
-    is $col_count, scalar @{$aref_orig->[0]};
-  }
-  
-  done_testing;
-  
+
+  print rows($matrix), " x ", cols($matrix), "\n";
+
   __DATA__
   __C__
-  
-  /* Custom driver */
-  int omp_elements_count(SV *ARRAY) {
-  
-    /* boilerplate - updates number of threads to use with what's in $ENV{OMP_NUM_THREADS} */
-    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
-  
-    int count = PerlOMP_1D_Array_NUM_ELEMENTS(ARRAY);
-  
-    return count;
+
+  int rows(SV *matrix) {
+    return PerlOMP_2D_AoA_NUM_ROWS(matrix);
   }
-  
-  int omp_elements_row_count(SV *ARRAY) {
-  
-    /* boilerplate - updates number of threads to use with what's in $ENV{OMP_NUM_THREADS} */
-    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
-  
-    int count = PerlOMP_2D_AoA_NUM_ROWS(ARRAY);
-  
-    return count;
-  }
-  
-  int omp_elements_col_count(SV *ARRAY) {
-  
-    /* boilerplate - updates number of threads to use with what's in $ENV{OMP_NUM_THREADS} */
-    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
-  
-    int count = PerlOMP_2D_AoA_NUM_COLS(ARRAY);
-  
-    return count;
+
+  int cols(SV *matrix) {
+    return PerlOMP_2D_AoA_NUM_COLS(matrix);
   }
 
 =head1 PROVIDED C FUNCTIONS FOR CONVERTING 1D PERL ARRAYS TO C ARRAYS
 
-B<Note>: Work is currently focused on finding the true limits of the Perl C
-API. It is likely that in a lot of cases, elements in Perl Arrays (AV) and Perl
-Hashes (HV) maybe accessed safely without first transferring the entire data
-structures into its pure C<C> equivalent.
+=head2 C<PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY>
 
-=head2 C<void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY>
-
-  void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY(SV *AVref, int numElements, float retArray[numElements]);
-
-Converts a 1D Perl Array Reference (C<AV*>) into a 1D C array of floats. This function assumes the Perl array contains numeric floating point values.
-
-=head2 C<void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY_r>
-
-  void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY_r(SV *AVref, int numElements, float retArray[numElements]);
-
-The parallelized version of C<void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY> using OpenMP. This function performs the same operation, but the array conversion is parallelized with OpenMP.
-
-=head2 C<void PerlOMP_1D_Array_TO_1D_INT_ARRAY>
-
-  void PerlOMP_1D_Array_TO_1D_INT_ARRAY(SV *AVref, int numElements, int retArray[numElements]);
-
-Converts a 1D Perl Array Reference (C<AV*>) into a 1D C array of integers. This function assumes the Perl array contains integer values.
-
-=head2 C<void PerlOMP_1D_Array_TO_1D_INT_ARRAY_r>
-
-  void PerlOMP_1D_Array_TO_1D_INT_ARRAY_r(SV *AVref, int numElements, int retArray[numElements]);
-
-The parallelized version of C<void PerlOMP_1D_Array_TO_1D_INT_ARRAY> using OpenMP. This function performs the same operation, but the array conversion is parallelized with OpenMP.
-
-=head2 C<void PerlOMP_1D_Array_TO_1D_STRING_ARRAY>
-
-  void PerlOMP_1D_Array_TO_1D_STRING_ARRAY(SV *AVref, int numElements, char *retArray[numElements]);
-
-Converts a 1D Perl Array Reference (C<AV*>) into a 1D C array of strings. The Perl array should contain string values.
-
-=head2 C<void PerlOMP_1D_Array_TO_1D_STRING_ARRAY_r>
-
-  void PerlOMP_1D_Array_TO_1D_STRING_ARRAY_r(SV *AVref, int numElements, char *retArray[numElements]);
-
-The parallelized version of C<PerlOMP_1D_Array_TO_1D_STRING_ARRAY> using OpenMP. This function performs the same operation, but the array conversion is parallelized with OpenMP.
-
-=head2 Example
-
-  #!/usr/bin/env perl
-  
-  use warnings;
-  use strict;
-  
-  use Test::More;
-  use Test::Deep;
-  
-  # build and load subroutines
-  use OpenMP::Simple;
-  use OpenMP::Environment;
-  
-  use Inline (
-      C                 => 'DATA',
-      with              => qw/OpenMP::Simple/,
+  void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY(
+      SV *AVref,
+      int numElements,
+      float retArray[numElements]
   );
-  
-  my $env = OpenMP::Environment->new();
-  
-  my $aref_orig = [
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-    [ 1 .. 10 ],
-  ];
-  
-  my $expected = [qw/1 2 3 4 5 6 7 8 9 10/];
-  
-  foreach my $thread_count (qw/1 4 8/) {
-    $env->omp_num_threads($thread_count);
-  
-    foreach my $row_orig (@$aref_orig)  {
-      my $aref_new      = omp_get_renew_aref($row_orig);
-      my $seen_elements = shift @$aref_new;
-      my $seen_threads  = shift @$aref_new;
-      is $seen_elements, scalar @$row_orig, q{PerlOMP_1D_Array_NUM_ELEMENTS works on original ARRAY reference};
-      is $seen_threads, $thread_count, qq{OMP_NUM_THREADS=$thread_count is respected inside of the, omp parallel section, as expected};
-      cmp_deeply $aref_new, $expected, qq{Row summed array ref returned as expected from $thread_count OpenMP threads};
-      cmp_deeply $aref_new, $expected, qq{PerlOMP_1D_Array_TO_1D_INT_ARRAY worked to convert original ARRAY reference to raw C 1D array of floats};
-    }
-  }
-  
-  done_testing;
-  
-  __DATA__
-  __C__
-  
-  /* Custom driver */
-  AV* omp_get_renew_aref(SV *ARRAY) {
-  
-    /* boilerplate - updates number of threads to use with what's in $ENV{OMP_NUM_THREADS} */
-    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
-  
-    /* boilerplate - creates an array to return back to perl, named "ret" */
-    /* note, "ret" can contain anything, when added via "av_push"         */
-    PerlOMP_RET_ARRAY_REF_ret
-  
-    /* non-boilerplate (for the test, we want this to apply to all rows, though) */
-    int num_elements = PerlOMP_1D_Array_NUM_ELEMENTS(ARRAY);
-    av_push(ret, newSViv(num_elements));
-  
-    /* get 1d array ref into a 1d C array */
-    int raw_array[num_elements];                                      // create native 1D array as target
-    PerlOMP_1D_Array_TO_1D_INT_ARRAY(ARRAY, num_elements, raw_array); // call macro to put AoA into native "nodes" array
-  
-    int sum[num_elements];
-    #pragma omp parallel shared(raw_array,num_elements,sum)
-    #pragma omp master
-      av_push(ret, newSViv(omp_get_num_threads()));
-    #pragma omp for
-      for(int i=0; i<num_elements; i++) {
-        sum[i] = raw_array[i];
-      }
-  
-    for(int i=0; i<num_elements; i++) {
-      av_push(ret, newSViv(sum[i]));
-    }
-  
-    // AV* 'ret' comes from "PerlOMP_RET_ARRAY_REF_ret" macro called above
-    return ret;
-  }
+
+Converts a one-dimensional Perl array reference to a C array of C<float>.
+
+=head2 C<PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY_r>
+
+  void PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY_r(
+      SV *AVref,
+      int numElements,
+      float retArray[numElements]
+  );
+
+OpenMP-parallelized variant of
+C<PerlOMP_1D_Array_TO_1D_FLOAT_ARRAY>. See L</Experimental data conversion
+helpers> before relying on the C<_r> conversion helpers across different Perl
+threading models.
+
+=head2 C<PerlOMP_1D_Array_TO_1D_INT_ARRAY>
+
+  void PerlOMP_1D_Array_TO_1D_INT_ARRAY(
+      SV *AVref,
+      int numElements,
+      int retArray[numElements]
+  );
+
+Converts a one-dimensional Perl array reference to a C array of C<int>.
+
+=head2 C<PerlOMP_1D_Array_TO_1D_INT_ARRAY_r>
+
+  void PerlOMP_1D_Array_TO_1D_INT_ARRAY_r(
+      SV *AVref,
+      int numElements,
+      int retArray[numElements]
+  );
+
+OpenMP-parallelized variant of C<PerlOMP_1D_Array_TO_1D_INT_ARRAY>. See
+L</Experimental data conversion helpers> for the portability caveat applying
+to C<_r> conversion helpers.
+
+=head2 C<PerlOMP_1D_Array_TO_1D_STRING_ARRAY>
+
+  void PerlOMP_1D_Array_TO_1D_STRING_ARRAY(
+      SV *AVref,
+      int numElements,
+      char *retArray[numElements]
+  );
+
+Converts a one-dimensional Perl array reference to separately allocated native
+C strings.
+
+The caller owns the resulting C strings and should C<free> each element when it
+is no longer needed.
+
+=head2 C<PerlOMP_1D_Array_TO_1D_STRING_ARRAY_r>
+
+  void PerlOMP_1D_Array_TO_1D_STRING_ARRAY_r(
+      SV *AVref,
+      int numElements,
+      char *retArray[numElements]
+  );
+
+Parallelized string-copy variant. Perl scalar access and native-buffer setup
+are staged on the caller thread; OpenMP workers copy native string data rather
+than manipulating Perl scalar storage directly.
+
+As with the non-C<_r> form, the caller owns the resulting C strings and should
+C<free> them.
 
 =head1 PROVIDED C FUNCTIONS FOR CONVERTING 2D PERL ARRAYS TO C ARRAYS
 
-=head2 C<void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY>
+=head2 C<PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY>
 
-  void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(SV *AoA, int numRows, int rowSize, float retArray[numRows][rowSize]);
-
-Converts a 2D Array of Arrays (AoA) in Perl into a 2D C array of floats. The Perl array should be an array of arrays, where each inner array contains floating point values.
-
-=head2 C<void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY_r>
-
-  void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY_r(SV *AoA, int numRows, int rowSize, float retArray[numRows][rowSize]);
-
-The parallelized version of C<void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY> using OpenMP. This function performs the same operation, but the array conversion is parallelized with OpenMP.
-
-=head2 C<void PerlOMP_2D_AoA_TO_2D_INT_ARRAY>
-
-  void PerlOMP_2D_AoA_TO_2D_INT_ARRAY(SV *AoA, int numRows, int rowSize, int retArray[numRows][rowSize]);
-
-Converts a 2D Array of Arrays (AoA) in Perl into a 2D C array of integers. The Perl array should be an array of arrays, where each inner array contains integer values.
-
-=head2 C<void PerlOMP_2D_AoA_TO_2D_INT_ARRAY_r>
-
-  void PerlOMP_2D_AoA_TO_2D_INT_ARRAY_r(SV *AoA, int numRows, int rowSize, int retArray[numRows][rowSize]);
-
-The parallelized version of C<void PerlOMP_2D_AoA_TO_2D_INT_ARRAY> using OpenMP. This function performs the same operation, but the array conversion is parallelized with OpenMP.
-
-=head2 C<void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY>
-
-  void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY(SV *AoA, int numRows, int rowSize, char *retArray[numRows][rowSize]);
-  
-Converts a 2D Array of Arrays (AoA) in Perl into a 2D C array of strings. The Perl array should be an array of arrays, where each inner array contains string values.
-
-=head2 C<void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY_r>
-
-  void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY_r(SV *AoA, int numRows, int rowSize, char *retArray[numRows][rowSize]);
-  
-The parallelized version of C<void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY> using OpenMP. This function performs the same operation, but the array conversion is parallelized with OpenMP.
-
-=head2 Example
-
-  #!/usr/bin/env perl
-  
-  use warnings;
-  use strict;
-      
-  use Test::More;
-  use Test::Deep;
-  
-  # build and load subroutines
-  use OpenMP::Simple;
-  use OpenMP::Environment;
-  
-  use Inline (
-      C                 => 'DATA',
-      with              => qw/OpenMP::Simple/,
+  void PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY(
+      SV *AoA,
+      int numRows,
+      int rowSize,
+      float retArray[numRows][rowSize]
   );
-  
-  my $env = OpenMP::Environment->new();
-  
-  my $aref_orig = [
-      [ "apple",    "banana", "cherry",   "date",   "elder",    "fig",    "grape",    "honey",  "iris",     "jack" ],
-      [ "kite",     "lemon",  "mango",    "nectar", "olive",    "pear",   "quince",   "rose",   "straw",    "tulip" ],
-      [ "umbrella", "violet", "water",    "xenon",  "yellow",   "zebra",  "apple",    "banana", "cherry",   "date" ],
-      [ "elder",    "fig",    "grape",    "honey",  "iris",     "jack",   "kite",     "lemon",  "mango",    "nectar" ],
-      [ "olive",    "pear",   "quince",   "rose",   "straw",    "tulip",  "umbrella", "violet", "water",    "xenon" ],
-      [ "yellow",   "zebra",  "apple",    "banana", "cherry",   "date",   "elder",    "fig",    "grape",    "honey" ],
-      [ "iris",     "jack",   "kite",     "lemon",  "mango",    "nectar", "olive",    "pear",   "quince",   "rose" ],
-      [ "straw",    "tulip",  "umbrella", "violet", "water",    "xenon",  "yellow",   "zebra",  "apple",    "banana" ],
-      [ "cherry",   "date",   "elder",    "fig",    "grape",    "honey",  "iris",     "jack",   "kite",     "lemon" ],
-      [ "mango",    "nectar", "olive",    "pear",   "quince",   "rose",   "straw",    "tulip",  "umbrella", "violet" ],
-      [ "water",    "xenon",  "yellow",   "zebra",  "apple",    "banana", "cherry",   "date",   "elder",    "fig" ],
-      [ "grape",    "honey",  "iris",     "jack",   "kite",     "lemon",  "mango",    "nectar", "olive",    "pear" ],
-      [ "quince",   "rose",   "straw",    "tulip",  "umbrella", "violet", "water",    "xenon",  "yellow",   "zebra" ],
-      [ "apple",    "banana", "cherry",   "date",   "elder",    "fig",    "grape",    "honey",  "iris",     "jack" ],
-      [ "kite",     "lemon",  "mango",    "nectar", "olive",    "pear",   "quince",   "rose",   "straw",    "tulip" ],
-      [ "umbrella", "violet", "water",    "xenon",  "yellow",   "zebra",  "apple",    "banana", "cherry",   "date" ],
-      [ "elder",    "fig",    "grape",    "honey",  "iris",     "jack",   "kite",     "lemon",  "mango",    "nectar" ],
-      [ "olive",    "pear",   "quince",   "rose",   "straw",    "tulip",  "umbrella", "violet", "water",    "xenon" ],
-      [ "yellow",   "zebra",  "apple",    "banana", "cherry",   "date",   "elder",    "fig",    "grape",    "honey" ],
-      [ "iris",     "jack",   "kite",     "lemon",  "mango",    "nectar", "olive",    "pear",   "quince",   "rose" ],
-      [ "straw",    "tulip",  "umbrella", "violet", "water",    "xenon",  "yellow",   "zebra",  "apple",    "banana" ],
-      [ "cherry",   "date",   "elder",    "fig",    "grape",    "honey",  "iris",     "jack",   "kite",     "lemon" ],
-      [ "mango",    "nectar", "olive",    "pear",   "quince",   "rose",   "straw",    "tulip",  "umbrella", "violet" ],
-      [ "water",    "xenon",  "yellow",   "zebra",  "apple",    "banana", "cherry",   "date",   "elder",    "fig" ],
-      [ "grape",    "honey",  "iris",     "jack",   "kite",     "lemon",  "mango",    "nectar", "olive",    "pear" ],
-      [ "quince",   "rose",   "straw",    "tulip",  "umbrella", "violet", "water",    "xenon",  "yellow",   "zebra" ],
-  ];
-  
-  foreach my $thread_count (qw/1 4 8/) {
-    $env->omp_num_threads($thread_count);
-    
-    my $aref_new = omp_get_renew_aref($aref_orig);
-    my $seen_elements = shift @$aref_new;
-    my $seen_threads  = shift @$aref_new;
-    
-    is $seen_elements, scalar(@$aref_orig) * scalar(@{$aref_orig->[0]}), q{PerlOMP_2D_AoA_NUM_ELEMENTS works correctly};
-    is $seen_threads, $thread_count, qq{OMP_NUM_THREADS=$thread_count respected inside omp parallel section};
-    cmp_deeply $aref_new, $aref_orig, qq{2D Array passed by reference matches the array returned};
-  }
-  
-  done_testing;
-  
-  __DATA__
-  __C__
-  
-  /* Custom driver */
-  AV* omp_get_renew_aref(SV *AoA) {
-    
-    PerlOMP_UPDATE_WITH_ENV__NUM_THREADS
-    PerlOMP_RET_ARRAY_REF_ret
-    
-    int numRows = PerlOMP_1D_Array_NUM_ELEMENTS(AoA);
-    int rowSize = 10;
-    av_push(ret, newSViv(numRows * rowSize));
-    
-    char *raw_array[numRows][rowSize];
-    PerlOMP_2D_AoA_TO_2D_STRING_ARRAY(AoA, numRows, rowSize, raw_array);
-    
-    char *processed[numRows][rowSize];
-  
-    #pragma omp parallel shared(raw_array, numRows, rowSize, processed)
-    #pragma omp master
-      av_push(ret, newSViv(omp_get_num_threads()));
-    #pragma omp for collapse(2)
-      for (int i = 0; i < numRows; i++) {
-        for (int j = 0; j < rowSize; j++) {
-          processed[i][j] = strdup(raw_array[i][j]);
-        }
-      }
-    
-    for (int i = 0; i < numRows; i++) {
-      AV *row = newAV();
-      for (int j = 0; j < rowSize; j++) {
-        av_push(row, newSVpv(processed[i][j], 0));
-        free(processed[i][j]);
-      }
-      av_push(ret, newRV_noinc((SV*)row));
-    }
-    
-    return ret;
-  }
 
-=head1 PROVIDED ARRAY MEMBER VERIFICATION FUNCTIONS
+Converts a two-dimensional Perl array-of-arrays to a two-dimensional C array of
+C<float>.
 
-=head2 C<void PerlOMP_VERIFY_1D_Array>
+=head2 C<PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY_r>
 
-  void PerlOMP_VERIFY_1D_Array(SV* array);
+OpenMP-parallelized variant of C<PerlOMP_2D_AoA_TO_2D_FLOAT_ARRAY>. See
+L</Experimental data conversion helpers> for the portability caveat applying
+to C<_r> conversion helpers.
 
-Verifies that the given Perl variable is a valid 1D array reference.
+=head2 C<PerlOMP_2D_AoA_TO_2D_INT_ARRAY>
 
-=head2 C<void PerlOMP_VERIFY_1D_INT_ARRAY>
-
-  void PerlOMP_VERIFY_1D_INT_ARRAY(SV* array);
-
-Verifies that the given 1D array contains only integer values.
-
-=head2 C<void PerlOMP_VERIFY_1D_FLOAT_ARRAY>
-
-  void PerlOMP_VERIFY_1D_FLOAT_ARRAY(SV* array);
-
-Verifies that the given 1D array contains only floating-point values.
-
-=head2 C<void PerlOMP_VERIFY_1D_CHAR_ARRAY>
-
-  void PerlOMP_VERIFY_1D_CHAR_ARRAY(SV* array);
-
-Verifies that the given 1D array contains only string values.
-
-=head2 C<void PerlOMP_VERIFY_2D_AoA>
-
-  void PerlOMP_VERIFY_2D_AoA(SV* array);
-
-Verifies that the given Perl variable is a valid 2D array of arrays (AoA) reference.
-
-=head2 C<void PerlOMP_VERIFY_2D_INT_ARRAY>
-
-  void PerlOMP_VERIFY_2D_INT_ARRAY(SV* array);
-
-Verifies that the given 2D array contains only integer values.
-
-=head2 C<void PerlOMP_VERIFY_2D_FLOAT_ARRAY>
-
-  void PerlOMP_VERIFY_2D_FLOAT_ARRAY(SV* array);
-
-Verifies that the given 2D array contains only floating-point values.
-
-=head2 C<void PerlOMP_VERIFY_2D_STRING_ARRAY>
-
-  void PerlOMP_VERIFY_2D_STRING_ARRAY(SV* array);
-
-Verifies that the given 2D array contains only string values.
-
-=head2 Examples
-
-  #!/usr/bin/env perl
-  
-  use strict;
-  use warnings;
-  use OpenMP::Simple;
-  use Inline (
-      C                 => 'DATA',
-      with              => qw/OpenMP::Simple/,
+  void PerlOMP_2D_AoA_TO_2D_INT_ARRAY(
+      SV *AoA,
+      int numRows,
+      int rowSize,
+      int retArray[numRows][rowSize]
   );
-  use Test::More;
-  use Test::Exception;
-  
-  my $valid_1d_int = [1, 2, 3, 4, 5];
-  my $valid_1d_float = [1.1, 2.2, 3.3, 4.4, 5.5];
-  my $valid_1d_string = ["ant", "bat", "cat", "dog"];
-  
-  my $valid_2d_int = [[1, 2], [3, 4], [5, 6]];
-  my $valid_2d_float = [[1.1, 2.2], [3.3, 4.4], [5.5, 6.6]];
-  my $valid_2d_string = [["ark", "bar"], ["car", "day"], ["egg", "fly"]];
-  
-  my $invalid_scalar = 42;
-  my $invalid_1d_array = { key => "value" };
-  
-  # Verify 1D arrays
-  dies_ok { _PerlOMP_VERIFY_1D_Array($invalid_scalar) } "Scalar should not be a valid 1D array";
-  lives_ok { _PerlOMP_VERIFY_1D_Array($valid_1d_int) } "Valid 1D array passes verification";
-  
-  lives_ok { _PerlOMP_VERIFY_1D_INT_ARRAY($valid_1d_int) } "Valid 1D integer array";
-  dies_ok { _PerlOMP_VERIFY_1D_INT_ARRAY($valid_1d_float) } "Float 1D array should fail int verification";
-  
-  lives_ok { _PerlOMP_VERIFY_1D_FLOAT_ARRAY($valid_1d_float) } "Valid 1D float array";
-  dies_ok { _PerlOMP_VERIFY_1D_FLOAT_ARRAY($valid_1d_int) } "Int 1D array should fail float verification";
-  
-  lives_ok { _PerlOMP_VERIFY_1D_STRING_ARRAY($valid_1d_string) } "Valid 1D string array";
-  dies_ok { _PerlOMP_VERIFY_1D_STRING_ARRAY($valid_1d_int) } "Int 1D array should fail string verification";
-  
-  # Verify 2D arrays
-  dies_ok { _PerlOMP_VERIFY_2D_AoA($invalid_scalar) } "Scalar should not be a valid 2D array";
-  lives_ok { _PerlOMP_VERIFY_2D_AoA($valid_2d_int) } "Valid 2D array passes verification";
-  
-  lives_ok { _PerlOMP_VERIFY_2D_INT_ARRAY($valid_2d_int) } "Valid 2D integer array";
-  dies_ok { _PerlOMP_VERIFY_2D_INT_ARRAY($valid_2d_float) } "Float 2D array should fail int verification";
-  
-  lives_ok { _PerlOMP_VERIFY_2D_FLOAT_ARRAY($valid_2d_float) } "Valid 2D float array";
-  dies_ok { _PerlOMP_VERIFY_2D_FLOAT_ARRAY($valid_2d_int) } "Int 2D array should fail float verification";
-  
-  lives_ok { _PerlOMP_VERIFY_2D_STRING_ARRAY($valid_2d_string) } "Valid 2D string array";
-  dies_ok { _PerlOMP_VERIFY_2D_STRING_ARRAY($valid_2d_int) } "Int 2D array should fail string verification";
-  
-  done_testing();
-  
-  __DATA__
-  __C__
-  
-  void _PerlOMP_VERIFY_1D_Array(SV* array) { PerlOMP_VERIFY_1D_Array(array); }
-  void _PerlOMP_VERIFY_1D_INT_ARRAY(SV* array) { PerlOMP_VERIFY_1D_INT_ARRAY(array); }
-  void _PerlOMP_VERIFY_1D_FLOAT_ARRAY(SV* array) { PerlOMP_VERIFY_1D_FLOAT_ARRAY(array); }
-  void _PerlOMP_VERIFY_1D_STRING_ARRAY(SV* array) { PerlOMP_VERIFY_1D_STRING_ARRAY(array); }
-  void _PerlOMP_VERIFY_2D_AoA(SV* array) { PerlOMP_VERIFY_2D_AoA(array); }
-  void _PerlOMP_VERIFY_2D_INT_ARRAY(SV* array) { PerlOMP_VERIFY_2D_INT_ARRAY(array); }
-  void _PerlOMP_VERIFY_2D_FLOAT_ARRAY(SV* array) { PerlOMP_VERIFY_2D_FLOAT_ARRAY(array); }
-  void _PerlOMP_VERIFY_2D_STRING_ARRAY(SV* array) { PerlOMP_VERIFY_2D_STRING_ARRAY(array); }
+
+Converts a two-dimensional Perl array-of-arrays to a two-dimensional C array of
+C<int>.
+
+=head2 C<PerlOMP_2D_AoA_TO_2D_INT_ARRAY_r>
+
+OpenMP-parallelized variant of C<PerlOMP_2D_AoA_TO_2D_INT_ARRAY>. See
+L</Experimental data conversion helpers> for the portability caveat applying
+to C<_r> conversion helpers.
+
+=head2 C<PerlOMP_2D_AoA_TO_2D_STRING_ARRAY>
+
+  void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY(
+      SV *AoA,
+      int numRows,
+      int rowSize,
+      char *retArray[numRows][rowSize]
+  );
+
+Converts a two-dimensional Perl array-of-arrays to separately allocated native
+C strings.
+
+The caller owns the resulting strings and should C<free> every element.
+
+=head2 C<PerlOMP_2D_AoA_TO_2D_STRING_ARRAY_r>
+
+  void PerlOMP_2D_AoA_TO_2D_STRING_ARRAY_r(
+      SV *AoA,
+      int numRows,
+      int rowSize,
+      char *retArray[numRows][rowSize]
+  );
+
+Parallelized string-copy variant. Perl scalar access and native-buffer setup
+are staged on the caller thread; OpenMP workers copy native string data rather
+than manipulating Perl scalar storage directly.
+
+The caller owns the resulting strings and should C<free> every element.
+
+=head1 PROVIDED ARRAY VERIFICATION FUNCTIONS
+
+=head2 C<PerlOMP_VERIFY_1D_Array>
+
+  void PerlOMP_VERIFY_1D_Array(SV *array);
+
+Verifies that the supplied Perl value is a one-dimensional array reference.
+
+=head2 C<PerlOMP_VERIFY_1D_INT_ARRAY>
+
+  void PerlOMP_VERIFY_1D_INT_ARRAY(SV *array);
+
+Verifies that a one-dimensional Perl array contains integer values.
+
+=head2 C<PerlOMP_VERIFY_1D_FLOAT_ARRAY>
+
+  void PerlOMP_VERIFY_1D_FLOAT_ARRAY(SV *array);
+
+Verifies that a one-dimensional Perl array contains floating-point values.
+
+=head2 C<PerlOMP_VERIFY_1D_STRING_ARRAY>
+
+  void PerlOMP_VERIFY_1D_STRING_ARRAY(SV *array);
+
+Verifies that a one-dimensional Perl array contains string values.
+
+=head2 C<PerlOMP_VERIFY_2D_AoA>
+
+  void PerlOMP_VERIFY_2D_AoA(SV *array);
+
+Verifies that the supplied Perl value is a two-dimensional array-of-arrays.
+
+=head2 C<PerlOMP_VERIFY_2D_INT_ARRAY>
+
+  void PerlOMP_VERIFY_2D_INT_ARRAY(SV *array);
+
+Verifies that a two-dimensional Perl array contains integer values.
+
+=head2 C<PerlOMP_VERIFY_2D_FLOAT_ARRAY>
+
+  void PerlOMP_VERIFY_2D_FLOAT_ARRAY(SV *array);
+
+Verifies that a two-dimensional Perl array contains floating-point values.
+
+=head2 C<PerlOMP_VERIFY_2D_STRING_ARRAY>
+
+  void PerlOMP_VERIFY_2D_STRING_ARRAY(SV *array);
+
+Verifies that a two-dimensional Perl array contains string values.
+
+=head1 TESTS AND EXAMPLES
+
+The distribution's C<t> directory contains focused examples for the macros and
+helper functions. The test suite is also used to exercise Perl, compiler,
+OpenMP runtime, and operating-system combinations that are difficult to
+represent accurately in a single documentation example.
+
+Examples in the test suite may use L<Test::More> or other testing modules for
+verification. Those testing modules are not required merely to use
+C<OpenMP::Simple> in an application.
 
 =head1 SEE ALSO
 
-This is a module that aims at making it easier to bootstrap Perl+OpenMP
-programs. It is designed to work together with L<OpenMP::Environment>.
+L<Alien::OpenMP> provides the OpenMP compiler and linker configuration used by
+this module.
 
-This module heavily favors the C<GOMP> implementation of the OpenMP
-specification within gcc. In fact, it has not been tested with any other
-implementations because L<Alien::OpenMP> doesn't support anything other
-than GCC at the time of this writing due to lack of anyone asking for it.
+L<OpenMP::Environment> provides a Perl interface for managing and validating
+OpenMP environment variables and is the recommended companion module when an
+application needs runtime configuration through C<%ENV>.
 
-L<https://gcc.gnu.org/onlinedocs/libgomp/index.html>
+The GNU libgomp documentation is useful when using GCC's OpenMP runtime:
 
-Please also see the C<rperl> project for a glimpse into the potential future
-of Perl+OpenMP, particularly in regards to thread-safe data structures.
+L<https://gcc.gnu.org/onlinedocs/libgomp/>
 
-L<https://www.rperl.org>
+The OpenMP specification and implementation documentation for the compiler and
+runtime in use remain authoritative for implementation-specific behavior.
+
+L<https://www.openmp.org/specifications/>
+
+See also the RPerl project for related work involving Perl and compiled
+parallel code:
+
+L<https://www.rperl.org/>
 
 =head1 AUTHOR
 
@@ -867,11 +739,13 @@ Brett Estrade L<< <oodler@cpan.org> >>
 
 =head1 AI GENERATED CODE DISCLAIMER
 
-B<Please be advised>, for full transparency (and to set a good precedence,)
-please note that the conversion functions, verification functions, their
-POD entries, and testing functions werge generated with great assistance
-using the "I<Perl Programming Expert By DRAKOPOULOS ANASTASIOS>" chatGPT.
+For transparency, portions of the conversion functions, verification
+functions, their documentation, and associated tests were developed with
+substantial assistance from generative AI tools. These portions are maintained
+and tested as part of C<OpenMP::Simple> like the rest of the distribution.
 
-=head1 LICENSE & COPYRIGHT
+=head1 LICENSE AND COPYRIGHT
 
-Same as Perl.
+This software is licensed under the same terms as Perl itself.
+
+=cut
